@@ -1,3 +1,5 @@
-.env
 node_modules
+.pnpm
+npm-debug.log
+.env
 /src/generated/prisma

@@ -1,18 +1,26 @@
 const express = require('express');
 require('dotenv').config();
+const errorMiddleware = require('./apps/middlewares/error.middleware');
+const logger = require('./libs/configs/logger.config');
 
 
 class Main {
+    #app
+
     constructor() {
-        this.app = express();
-        this.port = process.env.PORT;
+        this.#app = express();
+        this.plugin();
+        this.startUp();
     }
 
-    start (){
-        this.app.listen(this.port, () => {
-            console.log(`Server running on port ${this.port}`);
-        });
+    plugin() {
+        this.#app.use(errorMiddleware.expressErrorHandler);
+        this.#app.use(express.json({ limit: '20mb', type: 'application/json' }));
+        this.#app.use(express.urlencoded({ extended: true }));
+
     }
+    
+
 }
 
 module.exports = new Main();

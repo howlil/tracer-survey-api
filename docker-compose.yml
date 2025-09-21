@@ -3,7 +3,7 @@ version: '3.8'
 services:
   db: 
     image: mysql:8
-    container_name: databaase-tracer
+    container_name: database-tracer
     ports: 
       - "3307:3306"
     environment: 
