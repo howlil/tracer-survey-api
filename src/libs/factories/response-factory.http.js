@@ -1,4 +1,4 @@
-const ResponseHttp = require('./response.http');
+const ResponseHttp = require('../http/response.http');
 
 class ResponseFactory {
     static get(data) {

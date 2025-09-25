@@ -1,4 +1,4 @@
-const ErrorHttp = require("./error.http")
+const ErrorHttp = require("../http/error.http");
 
 class ErrorFactory {
 

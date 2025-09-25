@@ -8,22 +8,342 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model User {
-  id        String   @id @default(uuid())
-  email     String   @unique
-  fullName  String?
+enum QuestionType {
+  ESSAY
+  SINGLE_CHOICE
+  MULTIPLE_CHOICE
+  MATRIX_SINGLE_CHOICE
+}
+
+enum TargetRole {
+  ALUMNI
+  MANAGER
+}
+
+enum TargetDegree {
+  S1
+  S2
+  S3
+  D3
+  PROFESI
+}
+
+enum StatusSurvey {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+  CLOSED
+}
+
+enum BlastEmailType {
+  INVITATION
+  REMINDER
+  CUSTOM
+}
+
+enum BlastEmailStatus {
+  SCHEDULED
+  PENDING
+  SENT
+  FAILED
+}
+
+enum GreadueatePeriode {
+  WISUDA_I
+  WISUDA_II
+  WISUDA_III
+  WISUDA_IV
+  WISUDA_V
+  WISUDA_VI
+}
+
+// MODEL DEFINITIONS
+
+model Admin {
+  id        String      @id @default(uuid())
+  username  String      @unique
   password  String
-  isActif   Boolean  @default(true)
-  role      Role?    @relation(fields: [roleId], references: [id])
-  roleId    String   @unique
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  name      String
+  email     String      @unique
+  isActive  Boolean     @default(true)
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+  roles     AdminRole[]
+}
+
+model AdminRole {
+  adminId String
+  roleId  String
+  admin   Admin  @relation(fields: [adminId], references: [id])
+  role    Role   @relation(fields: [roleId], references: [id])
+
+  @@id([adminId, roleId])
+  @@index([roleId])
 }
 
 model Role {
+  id             String           @id @default(uuid())
+  roleName       String
+  description    String?
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  admins         AdminRole[]
+  rolePermission RolePermission[]
+}
+
+model RolePermission {
+  roleId       String
+  permissionId String
+  role         Role       @relation(fields: [roleId], references: [id])
+  permission   Permission @relation(fields: [permissionId], references: [id])
+
+  @@id([roleId, permissionId])
+  @@index([permissionId])
+}
+
+model Permission {
+  id              String           @id @default(uuid())
+  permissionName  String
+  code            String           @unique
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  rolePermissions RolePermission[]
+}
+
+model Respondent {
+  id                   String                 @id @default(uuid())
+  fullName             String
+  email                String
+  role                 TargetRole
+  pin                  String                 @unique
+  alumni               Alumni?
+  manager              Manager?
+  createdAt            DateTime               @default(now())
+  updatedAt            DateTime               @updatedAt
+  blastEmailRespondent BlastEmailRespondent[]
+  response             ResponseRespondent?
+}
+
+model Alumni {
+  id              String            @id @default(uuid())
+  nim             String            @unique
+  graduatedYear   Int
+  graduatePeriode GreadueatePeriode
+  respondentId    String            @unique
+  respondent      Respondent        @relation(fields: [respondentId], references: [id])
+  majorId         String
+  major           Major             @relation(fields: [majorId], references: [id])
+  degree          TargetDegree
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+}
+
+model Manager {
+  id           String     @id @default(uuid())
+  company      String
+  position     String
+  respondentId String     @unique
+  respondent   Respondent @relation(fields: [respondentId], references: [id])
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+}
+
+model Faculty {
+  id          String   @id @default(uuid())
+  facultyName String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  majors      Major[]
+}
+
+model Major {
+  id          String        @id @default(uuid())
+  majorName   String
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  faculty     Faculty       @relation(fields: [facultyId], references: [id])
+  facultyId   String
+  alumni      Alumni[]
+  surveyRules SurveyRules[]
+}
+
+model SurveyMaster {
   id        String   @id @default(uuid())
-  roleName  String
+  code      String   @unique
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  User      User?
+  surveys   Survey[]
+}
+
+model Survey {
+  id             String               @id @default(uuid())
+  surveyMasterId String
+  surveyMaster   SurveyMaster         @relation(fields: [surveyMasterId], references: [id])
+  title          String
+  description    String
+  version        Int                  @default(1)
+  documentUrl    String?
+  startDate      DateTime
+  endDate        DateTime
+  status         StatusSurvey         @default(DRAFT)
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+  surveyRules    SurveyRules[]
+  blastEmail     BlastEmail[]
+  question       Question[]
+  response       ResponseRespondent[]
+}
+
+model SurveyRules {
+  id               String       @id @default(uuid())
+  surveyId         String
+  majorId          String
+  degree           TargetDegree
+  targetRole       TargetRole
+  survey           Survey       @relation(fields: [surveyId], references: [id])
+  major            Major        @relation(fields: [majorId], references: [id])
+  minGraduatedYear Int
+  maxGraduatedYear Int
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+}
+
+model BlastEmail {
+  id                   String                 @id @default(uuid())
+  surveyId             String
+  emailTemplateId      String
+  emailTemplate        EmailTemplate          @relation(fields: [emailTemplateId], references: [id])
+  survey               Survey                 @relation(fields: [surveyId], references: [id])
+  emailType            BlastEmailType
+  title                String
+  dateToSend           DateTime
+  status               BlastEmailStatus       @default(SCHEDULED)
+  createdAt            DateTime               @default(now())
+  updatedAt            DateTime               @updatedAt
+  blastEmailRespondent BlastEmailRespondent[]
+}
+
+model BlastEmailRespondent {
+  blastEmailId String
+  respondentId String
+  blastEmail   BlastEmail       @relation(fields: [blastEmailId], references: [id])
+  respondent   Respondent       @relation(fields: [respondentId], references: [id])
+  sentAt       DateTime?
+  status       BlastEmailStatus
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+
+  @@id([blastEmailId, respondentId])
+  @@index([respondentId])
+}
+
+model EmailTemplate {
+  id           String       @id @default(uuid())
+  code         String       @unique
+  templateName String
+  subject      String
+  bodyText     String
+  bodyHtml     String
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  BlastEmail   BlastEmail[]
+}
+
+model Question {
+  id                    String                 @id @default(uuid())
+  surveyId              String
+  parentId              String?
+  groupQuestionId       String
+  code                  String                 @unique
+  questionText          String
+  questionType          QuestionType
+  isRequired            Boolean                @default(false)
+  sortOrder             Int
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @updatedAt
+  survey                Survey                 @relation(fields: [surveyId], references: [id])
+  parent                Question?              @relation("QuestionToQuestion", fields: [parentId], references: [id])
+  groupQuestion         GroupQuestion          @relation(fields: [groupQuestionId], references: [id])
+  children              Question[]             @relation("QuestionToQuestion")
+  answerQuestion        AnswerOptionQuestion[]
+  questionTreeAsTrigger QuestionTree[]         @relation("TriggerQuestion")
+  questionTreeAsPointer QuestionTree[]         @relation("PointerQuestion")
+  answerMultipleChoice  AnswerMultipleChoice[]
+  answer                Answer[]
+}
+
+model QuestionTree {
+  questionTriggerId       String
+  answerQuestionTriggerId String
+  questionPointerToId     String
+
+  questionTrigger       Question             @relation("TriggerQuestion", fields: [questionTriggerId], references: [id])
+  answerQuestionTrigger AnswerOptionQuestion @relation(fields: [answerQuestionTriggerId], references: [id])
+  questionPointerTo     Question             @relation("PointerQuestion", fields: [questionPointerToId], references: [id])
+
+  @@id([questionTriggerId, answerQuestionTriggerId, questionPointerToId])
+  @@index([answerQuestionTriggerId, questionPointerToId], name: "idx_answer_pointer")
+}
+
+model AnswerOptionQuestion {
+  id                     String                 @id @default(uuid())
+  questionId             String
+  answerText             String
+  sortOrder              Int
+  otherOptionPlaceholder String?
+  isTriggered            Boolean                @default(false)
+  createdAt              DateTime               @default(now())
+  updatedAt              DateTime               @updatedAt
+  question               Question               @relation(fields: [questionId], references: [id])
+  questionTree           QuestionTree[]
+  answerMultipleChoice   AnswerMultipleChoice[]
+  answer                 Answer[]
+}
+
+model ResponseRespondent {
+  id                   String                 @id @default(uuid())
+  surveyId             String
+  respondentId         String                 @unique
+  submittedAt          DateTime
+  survey               Survey                 @relation(fields: [surveyId], references: [id])
+  respondent           Respondent            @relation(fields: [respondentId], references: [id])
+  createdAt            DateTime               @default(now())
+  updatedAt            DateTime               @updatedAt
+  answerMultipleChoice AnswerMultipleChoice[]
+  answer               Answer[]
+}
+
+model AnswerMultipleChoice {
+  questionId             String
+  responseRespondentId   String
+  answerOptionQuestionId String
+
+  question           Question             @relation(fields: [questionId], references: [id])
+  responseRespondent ResponseRespondent   @relation(fields: [responseRespondentId], references: [id])
+  answerOption       AnswerOptionQuestion @relation(fields: [answerOptionQuestionId], references: [id])
+
+  @@id([questionId, responseRespondentId, answerOptionQuestionId])
+  @@index([responseRespondentId], name: "idx_response_respondent")
+}
+
+model Answer {
+  questionId             String
+  responseRespondentId   String
+  answerOptionQuestionId String
+  textAnswer             String
+
+  question             Question              @relation(fields: [questionId], references: [id])
+  responseRespondent   ResponseRespondent    @relation(fields: [responseRespondentId], references: [id])
+  answerOptionQuestion AnswerOptionQuestion? @relation(fields: [answerOptionQuestionId], references: [id])
+
+  @@id([questionId, responseRespondentId, answerOptionQuestionId])
+  @@index([responseRespondentId], name: "idx_response_respondent")
+}
+
+model GroupQuestion {
+  id        String     @id @default(uuid())
+  groupName String
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  questions Question[]
 }
