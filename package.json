@@ -7,13 +7,18 @@
     "dev": "nodemon index.js",
     "start": "node index.js"
   },
-  "keywords": [],
-  "author": "",
+  "keywords": [
+    "be",
+    "tracer",
+    "unand"
+  ],
+  "author": "github.com/howlil",
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
     "@prisma/client": "^6.16.2",
     "awilix": "^12.0.5",
+    "bcrypt": "^6.0.0",
     "dotenv": "^17.2.2",
     "express": "^5.1.0",
     "joi": "^18.0.1",

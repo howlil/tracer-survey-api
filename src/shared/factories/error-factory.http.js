@@ -21,6 +21,10 @@ class ErrorFactory {
     static internalServerError(message) {
         return new ErrorHttp(500, message, "Internal Server Error");
     }
+
+    static validationError(message) {
+        return new ErrorHttp(422, message, "Validation Error");
+    }
 }
 
 module.exports = ErrorFactory;

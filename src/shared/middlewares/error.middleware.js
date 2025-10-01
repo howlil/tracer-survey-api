@@ -1,6 +1,5 @@
 const { PrismaClientKnownRequestError, PrismaClientValidationError } = require('@prisma/client');
-const ErrorHttp = require('../../libs/http/error.http');
-const joi = require('joi');
+const ErrorHttp = require('../http/error.http');
 
 class ErrorMiddleware {
 
@@ -14,17 +13,6 @@ class ErrorMiddleware {
         try {
             if (err instanceof ErrorHttp) {
                 return this.createErrorResponse(res, err.statusCode, err.message, err.error);
-            }
-
-            if (err instanceof joi.ValidationError) {
-
-                const errorMessage = err.details.map(detail => ({
-                    field: detail.path.join('.'),
-                    message: detail.message,
-                    type: detail.type
-                }))
-
-                return this.createErrorResponse(res, 400, "Validation Error", errorMessage);
             }
 
             if (err instanceof PrismaClientKnownRequestError) {
@@ -43,6 +31,7 @@ class ErrorMiddleware {
                     : JSON.stringify(err.message);
                 return this.createErrorResponse(res, 400, "Database Validation Error", errorMessage);
             }
+
 
             return this.createErrorResponse(res, 500, "Internal Server Error", err.message);
 

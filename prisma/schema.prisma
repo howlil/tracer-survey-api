@@ -10,9 +10,11 @@ datasource db {
 
 enum QuestionType {
   ESSAY
+  LONG_TEST
   SINGLE_CHOICE
   MULTIPLE_CHOICE
   MATRIX_SINGLE_CHOICE
+  COMBO_BOX
 }
 
 enum TargetRole {
@@ -22,9 +24,7 @@ enum TargetRole {
 
 enum TargetDegree {
   S1
-  S2
-  S3
-  D3
+  PASCA
   PROFESI
 }
 
@@ -104,7 +104,6 @@ model RolePermission {
 model Permission {
   id              String           @id @default(uuid())
   permissionName  String
-  code            String           @unique
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
   rolePermissions RolePermission[]
@@ -115,7 +114,6 @@ model Respondent {
   fullName             String
   email                String
   role                 TargetRole
-  pin                  String                 @unique
   alumni               Alumni?
   manager              Manager?
   createdAt            DateTime               @default(now())
@@ -136,16 +134,27 @@ model Alumni {
   degree          TargetDegree
   createdAt       DateTime          @default(now())
   updatedAt       DateTime          @updatedAt
+  PinAlumni       PinAlumni[]
+}
+
+model PinAlumni {
+  pin       String     @id
+  alumniId  String
+  alumni    Alumni     @relation(fields: [alumniId], references: [id])
+  managerId String?
+  manager   Manager?   @relation(fields: [managerId], references: [id])
+  pinType   TargetRole
 }
 
 model Manager {
-  id           String     @id @default(uuid())
+  id           String      @id @default(uuid())
   company      String
   position     String
-  respondentId String     @unique
-  respondent   Respondent @relation(fields: [respondentId], references: [id])
-  createdAt    DateTime   @default(now())
-  updatedAt    DateTime   @updatedAt
+  respondentId String      @unique
+  respondent   Respondent  @relation(fields: [respondentId], references: [id])
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+  PinAlumni    PinAlumni[]
 }
 
 model Faculty {
@@ -167,45 +176,32 @@ model Major {
   surveyRules SurveyRules[]
 }
 
-model SurveyMaster {
-  id        String   @id @default(uuid())
-  code      String   @unique
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  surveys   Survey[]
-}
-
 model Survey {
-  id             String               @id @default(uuid())
-  surveyMasterId String
-  surveyMaster   SurveyMaster         @relation(fields: [surveyMasterId], references: [id])
-  title          String
-  description    String
-  version        Int                  @default(1)
-  documentUrl    String?
-  startDate      DateTime
-  endDate        DateTime
-  status         StatusSurvey         @default(DRAFT)
-  createdAt      DateTime             @default(now())
-  updatedAt      DateTime             @updatedAt
-  surveyRules    SurveyRules[]
-  blastEmail     BlastEmail[]
-  question       Question[]
-  response       ResponseRespondent[]
+  id              String               @id @default(uuid())
+  surveyMasterId  String
+  greatingOpening Json
+  greetingClosing Json
+  version         Int                  @default(1)
+  documentUrl     String?
+  status          StatusSurvey         @default(DRAFT)
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+  surveyRules     SurveyRules[]
+  blastEmail      BlastEmail[]
+  response        ResponseRespondent[]
+  CodeQuestion    CodeQuestion[]
 }
 
 model SurveyRules {
-  id               String       @id @default(uuid())
-  surveyId         String
-  majorId          String
-  degree           TargetDegree
-  targetRole       TargetRole
-  survey           Survey       @relation(fields: [surveyId], references: [id])
-  major            Major        @relation(fields: [majorId], references: [id])
-  minGraduatedYear Int
-  maxGraduatedYear Int
-  createdAt        DateTime     @default(now())
-  updatedAt        DateTime     @updatedAt
+  id         String       @id @default(uuid())
+  surveyId   String
+  majorId    String
+  degree     TargetDegree
+  targetRole TargetRole
+  survey     Survey       @relation(fields: [surveyId], references: [id])
+  major      Major        @relation(fields: [majorId], references: [id])
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
 }
 
 model BlastEmail {
@@ -216,7 +212,7 @@ model BlastEmail {
   survey               Survey                 @relation(fields: [surveyId], references: [id])
   emailType            BlastEmailType
   title                String
-  dateToSend           DateTime
+  dateToSend           DateTime               @db.Date()
   status               BlastEmailStatus       @default(SCHEDULED)
   createdAt            DateTime               @default(now())
   updatedAt            DateTime               @updatedAt
@@ -249,19 +245,32 @@ model EmailTemplate {
   BlastEmail   BlastEmail[]
 }
 
+model CodeQuestion {
+  code     String     @id
+  surveyId String
+  survey   Survey     @relation(fields: [surveyId], references: [id])
+  Question Question[]
+}
+
+model Faq {
+  id        String   @id @default(uuid())
+  title     String
+  link      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
 model Question {
   id                    String                 @id @default(uuid())
-  surveyId              String
   parentId              String?
+  codeId                String
   groupQuestionId       String
-  code                  String                 @unique
   questionText          String
   questionType          QuestionType
   isRequired            Boolean                @default(false)
   sortOrder             Int
-  createdAt             DateTime               @default(now())
-  updatedAt             DateTime               @updatedAt
-  survey                Survey                 @relation(fields: [surveyId], references: [id])
+  placeholder           String
+  searchplaceholder     String
   parent                Question?              @relation("QuestionToQuestion", fields: [parentId], references: [id])
   groupQuestion         GroupQuestion          @relation(fields: [groupQuestionId], references: [id])
   children              Question[]             @relation("QuestionToQuestion")
@@ -270,6 +279,9 @@ model Question {
   questionTreeAsPointer QuestionTree[]         @relation("PointerQuestion")
   answerMultipleChoice  AnswerMultipleChoice[]
   answer                Answer[]
+  codeQuestion          CodeQuestion           @relation(fields: [codeId], references: [code])
+  updatedAt             DateTime               @updatedAt
+  createdAt             DateTime               @default(now())
 }
 
 model QuestionTree {
@@ -306,7 +318,7 @@ model ResponseRespondent {
   respondentId         String                 @unique
   submittedAt          DateTime
   survey               Survey                 @relation(fields: [surveyId], references: [id])
-  respondent           Respondent            @relation(fields: [respondentId], references: [id])
+  respondent           Respondent             @relation(fields: [respondentId], references: [id])
   createdAt            DateTime               @default(now())
   updatedAt            DateTime               @updatedAt
   answerMultipleChoice AnswerMultipleChoice[]

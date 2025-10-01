@@ -17,7 +17,13 @@ class PrismaConfig {
                 { emit: 'event', level: 'warn' },
                 { emit: 'event', level: 'error' }
             ],
-            errorFormat: globalUtils.isDevelopment ? 'pretty' : 'colorless'
+            errorFormat: globalUtils.isDevelopment ? 'pretty' : 'colorless',
+
+            datasources : {
+                db: {
+                    url: process.env.DATABASE_URL
+                }
+            }
         });
     }
 
