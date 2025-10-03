@@ -111,7 +111,7 @@ class BaseRepository {
 
             return {
                 data,
-                pagination: {
+                meta : {
                     total,
                     limit,
                     page,

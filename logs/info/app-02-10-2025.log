@@ -1,0 +1,18 @@
+ 21:54:05 02-10-2025 [32minfo[39m: [32mSeeding database...[39m
+ 21:54:05 02-10-2025 [32minfo[39m: [32m'🌱 Starting permission seeding...'[39m
+ 21:54:05 02-10-2025 [32minfo[39m: [32m📝 Found 35 permissions to seed[39m
+ 21:54:05 02-10-2025 [32minfo[39m: [32mStarting a mysql pool with 17 connections.[39m
+ 21:54:06 02-10-2025 [32minfo[39m: [32m✅ Seeding completed![39m
+ 21:54:06 02-10-2025 [32minfo[39m: [32m   - Created: 35 permissions[39m
+ 21:54:06 02-10-2025 [32minfo[39m: [32m   - Updated: 0 permissions[39m
+ 21:54:06 02-10-2025 [32minfo[39m: [32m   - Total: 35 permissions[39m
+ 21:54:06 02-10-2025 [32minfo[39m: [32mDatabase seeded successfully[39m
+ 22:12:19 02-10-2025 [32minfo[39m: [32mSeeding database...[39m
+ 22:12:19 02-10-2025 [32minfo[39m: [32m'🌱 Starting permission seeding...'[39m
+ 22:12:19 02-10-2025 [32minfo[39m: [32m📝 Found 35 permissions to seed[39m
+ 22:12:19 02-10-2025 [32minfo[39m: [32mStarting a mysql pool with 17 connections.[39m
+ 22:12:19 02-10-2025 [32minfo[39m: [32m✅ Seeding completed![39m
+ 22:12:19 02-10-2025 [32minfo[39m: [32m   - Created: 0 permissions[39m
+ 22:12:19 02-10-2025 [32minfo[39m: [32m   - Updated: 35 permissions[39m
+ 22:12:19 02-10-2025 [32minfo[39m: [32m   - Total: 35 permissions[39m
+ 22:12:19 02-10-2025 [32minfo[39m: [32mDatabase seeded successfully[39m

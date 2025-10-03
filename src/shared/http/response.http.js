@@ -8,11 +8,16 @@ class ResponseHttp {
     }
 
     send(res) {
-        return res.status(this.statusCode).json({
+        const responseBody ={
             success: this.statusCode < 400,
             message: this.message,
-            data: this.data
-        });
+        }
+
+        if (this.data !== null || this.data !== undefined){
+            responseBody.data = this.data
+        }
+        
+        return res.status(this.statusCode).json(responseBody);
     }
 
 }

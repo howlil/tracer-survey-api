@@ -27,7 +27,7 @@ class LoggerConfig {
     }
 
     #createLogger() {
-        return logger = createLogger({
+        return this.logger = createLogger({
             levels: this.levels,
             format: this.#getLogFormat(),
             transports: this.#getTransports(),

@@ -103,7 +103,9 @@ model RolePermission {
 
 model Permission {
   id              String           @id @default(uuid())
-  permissionName  String
+  permissionName  String  @unique
+  resource        String?
+  action          String?
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
   rolePermissions RolePermission[]
