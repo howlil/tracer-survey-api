@@ -1,8 +1,8 @@
 const BaseRepository = require("../../shared/base/base.repository")
 
-class FaqRepository extends BaseRepository {
+class MajorRepository extends BaseRepository {
     constructor(prisma, logger) {
-        super(prisma.faq, logger)
+        super(prisma.major, logger)
     }
 
     async findMany() {
@@ -10,8 +10,7 @@ class FaqRepository extends BaseRepository {
             return await this.prisma.findMany({
                 select: {
                     id: true,
-                    title: true,
-                    link: true
+                    majorName: true,
                 }
             })
 
@@ -21,4 +20,4 @@ class FaqRepository extends BaseRepository {
     }
 }
 
-module.exports = FaqRepository
+module.exports = MajorRepository

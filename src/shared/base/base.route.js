@@ -1,6 +1,6 @@
 const { Router } = require("express")
 const { makeInvoker } = require("awilix-express")
-
+const validationMiddleware = require("../middlewares/validation.middleware")
 
 class BaseRoute {
     constructor(controllerName) {
@@ -9,6 +9,7 @@ class BaseRoute {
         }
         this.router = Router()
         this.api = makeInvoker(controllerName)
+        this.validation = validationMiddleware 
         this.createRoute()
 
     }

@@ -16,7 +16,7 @@ https://example.com/api/
 
 #### login manager
 
-------------------------------------------------
+---
 
 ## ADMIN
 
@@ -117,9 +117,9 @@ response {
 }
 ```
 
-### Manage role and permission
+### Manage role and permission [DONE]
 
-#### get role and permision
+#### get role and permision [DONE]
 
 ```
 GET /v2/roles
@@ -135,7 +135,7 @@ response {
 
 
 
-GET /v1/roles
+GET /v1/roles  [DONE]
 
 response {
     status
@@ -156,7 +156,7 @@ response {
 
 ```
 
-#### add role and permision
+#### add role and permision [DONE]
 
 POST v1/role
 
@@ -164,28 +164,28 @@ request {
 roleName
 description
 rolePermission[
-        id
-    ]
+id
+]
 
 }
 
 response {
-    status
-    message
-    data {
-        id
-        roleName
-        description
-        rolePermission[
-        {
-            id
-            permisionName
-        },
-    ]
-    }
+status
+message
+data {
+id
+roleName
+description
+rolePermission[
+{
+i
+permisionName
+},
+]
+}
 }
 
-#### update role and permision
+#### update role and permision [DONE]
 
 ```
 PATCH v1/rolee/{id}
@@ -215,7 +215,7 @@ response {
 }
 ```
 
-#### delete role and permision
+#### delete role and permision [DONE]
 
 CONSTRAINT : if there is a admin in role, the role cant be deleted
 
@@ -229,296 +229,222 @@ response {
 
 ```
 
-
 ### Manage database Alumni
 
-#### get alumni 
+#### get alumni
 
 GET v1/alumnis
 
 req query {
-    page
-    limit
-    where {
-        search,
-        facultyId
-        majorId
-        degree
-        graduateYear
-        periodegraduate
-    }
+page
+limit
+where {
+search,
+facultyId
+majorId
+degree
+graduateYear
+periodegraduate
+}
 }
 
 res {
-    status
-    message
-    data : {
-        id
-        nim
-        namaLengkap
-        email
-        fakultas
-        prodi
-        jenjang
-        tahunLulus
-        periodeWisuda
-    }
-    meta :{
-        page
-        limit 
-        total
-        totalPages
-    }
+status
+message
+data : {
+id
+nim
+namaLengkap
+email
+fakultas
+prodi
+jenjang
+tahunLulus
+periodeWisuda
+}
+meta :{
+page
+limit
+total
+totalPages
+}
 }
 
-
-#### POST alumni 
+#### POST alumni
 
 POST v1/alumni
 
 // NOTE pin alumni langsung kebikin jadi ada 2 untuk alumni dan untuk usernya
 
 req : {
-    nim
-    namaLengkap
-    email
-    fakultas
-    prodi
-    jenjang
-    tahunLulus
-    periodeWisuda
+nim
+namaLengkap
+email
+fakultas
+prodi
+jenjang
+tahunLulus
+periodeWisuda
 }
 
 res {
-    status
-    message
-    data : {
-        id
-        nim
-        namaLengkap
-        email
-        fakultas
-        prodi
-        jenjang
-        tahunLulus
-        periodeWisuda
-    }
+status
+message
+data : {
+id
+nim
+namaLengkap
+email
+fakultas
+prodi
+jenjang
+tahunLulus
+periodeWisuda
+}
 }
 
-#### PATCH alumni 
+#### PATCH alumni
 
 PATCH v1/alumni
 
 req : {
-    nim
-    namaLengkap
-    email
-    fakultas
-    prodi
-    jenjang
-    tahunLulus
-    periodeWisuda
+nim
+namaLengkap
+email
+fakultas
+prodi
+jenjang
+tahunLulus
+periodeWisuda
 }
 
 res {
-    status
-    message
-    data : {
-        id
-        nim
-        namaLengkap
-        email
-        fakultas
-        prodi
-        jenjang
-        tahunLulus
-        periodeWisuda
-    }
+status
+message
+data : {
+id
+nim
+namaLengkap
+email
+fakultas
+prodi
+jenjang
+tahunLulus
+periodeWisuda
+}
 }
 
-
-#### POST EXCEL alumni 
+#### POST EXCEL alumni
 
 POST v1/alumni/import-excel
 
 req.file : {
-    excelAlumni
+excelAlumni
 }
 
 res {
-    status
-    message
+status
+message
 }
-
 
 ### manage manager
 
-#### get manager 
+#### get manager
 
 GET v1/managers
 
 req query {
-    page
-    limit
-    where {
-        search,
-        company
-    }
+page
+limit
+where {
+search,
+company
+}
 }
 
 res {
-    status
-    message
-    data : {
-        id
-        namaLengkap
-        email
-        perusahaan
-        posisi
-        alumni : []
-    }
-    meta :{
-        page
-        limit 
-        total
-        totalPages
-    }
+status
+message
+data : {
+id
+namaLengkap
+email
+perusahaan
+posisi
+alumni : []
+}
+meta :{
+page
+limit
+total
+totalPages
+}
 }
 
-
-#### POST manager 
+#### POST manager
 
 POST v1/managers
 
 // pin alumni dapat ketika mereka terhubung
 
 req : {
-        namaLengkap
-        email
-        perusahaan
-        posisi
-        alumni : []
-    }
-
-res {
-    status
-    message
-    data : {
-        id
-        namaLengkap
-        email
-        perusahaan
-        posisi
-        alumni : []
-    }
+namaLengkap
+email
+perusahaan
+posisi
+alumni : []
 }
 
-#### PATCH manager 
+res {
+status
+message
+data : {
+id
+namaLengkap
+email
+perusahaan
+posisi
+alumni : []
+}
+}
+
+#### PATCH manager
 
 PATCH v1/manager/{id}
 
 req : {
-        namaLengkap
-        email
-        perusahaan
-        posisi
-        alumni : []
-    }
-
-res {
-    status
-    message
-    data : {
-        id
-        namaLengkap
-        email
-        perusahaan
-        posisi
-        alumni : []
-    }
+namaLengkap
+email
+perusahaan
+posisi
+alumni : []
 }
 
-#### POST EXCEL manager 
+res {
+status
+message
+data : {
+id
+namaLengkap
+email
+perusahaan
+posisi
+alumni : []
+}
+}
+
+#### POST EXCEL manager
 
 PATCH v1/manager/import-excel
 
 req.file : {
-    excelManager
+excelManager
 }
 
 res {
-    status
-    message
+status
+message
 }
 
+---
 
-
-
-
-
-
------------------------------------------------------
-
-### manage FAQ
-
-#### get FAQ
-
-GET v1/faqs
-
-res : {
-    status
-    message 
-    data :[{
-        id
-        judul
-        link
-    }]
-}
-
-#### POST FAQ
-
-POST v1/faq
-
-res : {
-        judul
-        link
-    }
-
-res : {
-    status
-    message 
-    data :{
-        id
-        judul
-        link
-    }
-}
-
-#### PATCH FAQ
-
-POST v1/faq/{id}
-
-res : {
-        judul
-        link
-    }
-
-res : {
-    status
-    message 
-    data :{
-        id
-        judul
-        link
-    }
-}
-
-#### DELET FAQ
-
-DEL v1/faq/{id}
-
-req : {
-        id
-}
-
--------------------------------------------------

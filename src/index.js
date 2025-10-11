@@ -21,6 +21,7 @@ class Main {
         this.#app.use(express.urlencoded({ extended: true }));
         this.#app.use((req, res, next) => { req.container = awilixConfig.scope; next() })
         this.#app.use(require("./domain/index.route"))
+        this.#app.use(require("./shared/middlewares/not-found.middleware"));
         this.#app.use(errorMiddleware.expressErrorHandler);
 
     }

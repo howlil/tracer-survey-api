@@ -1,4 +1,4 @@
-const { PrismaClientKnownRequestError, PrismaClientValidationError, PrismaClientInitializationError, PrismaClientRustPanicError } = require('@prisma/client');
+const PrismaErrorMiddlware = require('./prisma-error.middleware');
 const ErrorHttp = require('../http/error.http');
 
 class ErrorMiddleware {
@@ -22,38 +22,9 @@ class ErrorMiddleware {
                 });
             }
 
-            if (err instanceof PrismaClientKnownRequestError) {
-                if (err.code === 'P2025') {
-                    return this.createErrorResponse(res, 404, "Record Not Found", {
-                        message: "The requested record was not found",
-                        type: "not_found"
-                    });
-                }
-
-                if (err.code === 'P2002') {
-                    return this.createErrorResponse(res, 409, "Conflict", {
-                        message: "A record with this information already exists",
-                        type: "duplicate_entry"
-                    });
-                }
-
-                return this.createErrorResponse(res, 400, "Database Error", {
-                    message: this.cleanErrorMessage(err.message),
-                    type: "database_error"
-                });
-            }
-
-            if (err instanceof PrismaClientValidationError) {
-                const errorMessage = this.parsePrismaValidationError(err.message);
-                return this.createErrorResponse(res, 422, "Validation Error", errorMessage);
-            }
-
-            if (err instanceof PrismaClientInitializationError) {
-                return this.createErrorResponse(res, 500, "Database Connection Error", this.cleanErrorMessage(err.message));
-            }
-
-            if (err instanceof PrismaClientRustPanicError) {
-                return this.createErrorResponse(res, 500, "Database Internal Error", "Internal database error occurred");
+            const prismaError = PrismaErrorMiddlware.handlePrismaError(err);
+            if (prismaError) {
+                return this.createErrorResponse(res, prismaError.statusCode, prismaError.message, prismaError.error);
             }
 
             return this.createErrorResponse(res, 500, "Internal Server Error", this.cleanErrorMessage(err.message));
@@ -73,36 +44,6 @@ class ErrorMiddleware {
             .trim();
     }
 
-    parsePrismaValidationError(message) {
-        const cleanMessage = this.cleanErrorMessage(message);
-
-        const fieldMatch = cleanMessage.match(/Argument `([^`]+)`/);
-        const errorMatch = cleanMessage.match(/Expected ([^,]+), provided ([^.]+)/);
-        const missingFieldMatch = cleanMessage.match(/Argument `([^`]+)` is missing/);
-
-        if (missingFieldMatch) {
-            return {
-                field: missingFieldMatch[1],
-                message: `Field '${missingFieldMatch[1]}' is required but missing`,
-                type: 'missing_field'
-            };
-        }
-
-        if (fieldMatch && errorMatch) {
-            return {
-                field: fieldMatch[1],
-                message: `Invalid value for '${fieldMatch[1]}'. Expected ${errorMatch[1]}, but got ${errorMatch[2]}`,
-                expected: errorMatch[1],
-                provided: errorMatch[2],
-                type: 'invalid_type'
-            };
-        }
-
-        return {
-            message: cleanMessage,
-            type: 'validation_error'
-        };
-    }
 
     static createErrorResponse(res, statusCode, message, error) {
         return res.status(statusCode).json({

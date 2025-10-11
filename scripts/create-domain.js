@@ -164,18 +164,37 @@ module.exports = ${DomainName}Validation`
         console.log(`✅ Generated: ${fileName}`)
     }
 
+
+
     capitalizeFirst(str) {
+        if (str.includes("-")) {
+            return str
+                .split('-')
+                .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+                .join('')
+        }
         return str.charAt(0).toUpperCase() + str.slice(1)
     }
 
     camelCase(str) {
+        if (str.includes("-")) {
+            return str
+                .split('-')
+                .map((word, index) => {
+                    if (index === 0) {
+                        return word.toLowerCase()
+                    }
+                    return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+                })
+                .join('')
+        }
         return str.charAt(0).toLowerCase() + str.slice(1)
     }
 }
 
 if (require.main === module) {
     const args = process.argv.slice(2)
-    
+
     if (args.length === 0) {
         console.log('Usage: node create-domain.js <domainName>')
         console.log('Example: node create-domain.js auth')

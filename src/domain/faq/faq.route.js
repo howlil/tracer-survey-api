@@ -1,7 +1,6 @@
 const BaseRoute = require("../../shared/base/base.route")
 const faqController = require("./faq.controller")
 const faqValidation = require("./faq.validation")
-const validationMiddleware = require("../../shared/middlewares/validation.middleware")
 
 class FaqRoute extends BaseRoute {
     constructor() {
@@ -24,13 +23,13 @@ class FaqRoute extends BaseRoute {
         this.post(
             "/v1/faq",
             "create",
-            validationMiddleware.validateBody(faqValidation.createSchema())
+            this.validation.validateBody(faqValidation.createSchema())
         )
 
         this.patch(
             "/v1/faq/:id",
             "update",
-            validationMiddleware.validateBody(faqValidation.updateSchema())
+            this.validation.validateBody(faqValidation.updateSchema())
         )
 
         this.delete(

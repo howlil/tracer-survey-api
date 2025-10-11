@@ -1,5 +1,6 @@
 const permissionSeed = require("./seeds/permission.seed")
 const logger = require("../shared/configs/logger.config")
+const facultyMajorSeed = require("./seeds/faculty-major.seed")
 
 class DatabaseSeeder {
     constructor(seeds = []) {
@@ -23,7 +24,7 @@ class DatabaseSeeder {
     }
 }
 
-const seeder  = new DatabaseSeeder([permissionSeed]);
+const seeder = new DatabaseSeeder([ facultyMajorSeed]);
 
 if (require.main === module) {
     seeder.seed()

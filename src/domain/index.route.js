@@ -9,7 +9,11 @@ class IndexRoute {
     }
 
     setUp() {
-        this.#app.use("/api",require("./faq/faq.route"))
+        this.#app.use("/api", require("./faq/faq.route"))
+        this.#app.use("/api", require("./role-permission/rolePermission.route"))
+        this.#app.use("/api", require("./faculty/faculty.route"))
+        this.#app.use("/api", require("./major/major.route"))
+        this.#app.use("/api", require("./admin/admin.route"))
     }
 
     getRouter() {
@@ -25,7 +29,6 @@ class IndexRoute {
                 }
             )
         })
-
 
     }
 

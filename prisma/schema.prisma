@@ -7,6 +7,12 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+/**
+ * =============================================
+ * ENUM DEFINITION
+ * =============================================
+ */
+
 enum QuestionType {
   ESSAY
   LONG_TEST
@@ -24,6 +30,15 @@ enum TargetRole {
 enum TargetDegree {
   S1
   PASCA
+  PROFESI
+  VOKASI
+}
+
+enum Degree {
+  S1
+  S2
+  S3
+  VOKASI
   PROFESI
 }
 
@@ -56,7 +71,11 @@ enum GreadueatePeriode {
   WISUDA_VI
 }
 
-// MODEL DEFINITIONS
+/**
+ * =============================================
+ * MODEL ADMIN , ROLE . PERMISSION
+ * =============================================
+ */
 
 model Admin {
   id        String      @id @default(uuid())
@@ -110,6 +129,12 @@ model Permission {
   rolePermissions RolePermission[]
 }
 
+/**
+ * =============================================
+ * MODEL RESPONDENT , ALUMNI, MANAGER, PIN ALUMNI
+ * =============================================
+ */
+
 model Respondent {
   id                   String                 @id @default(uuid())
   fullName             String
@@ -158,6 +183,12 @@ model Manager {
   PinAlumni    PinAlumni[]
 }
 
+/**
+ * =============================================
+ * MODULE ACADEMIC
+ * =============================================
+ */
+
 model Faculty {
   id          String        @id @default(uuid())
   facultyName String
@@ -170,6 +201,7 @@ model Faculty {
 model Major {
   id        String   @id @default(uuid())
   majorName String
+  degree    Degree
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   faculty   Faculty  @relation(fields: [facultyId], references: [id])
@@ -177,12 +209,26 @@ model Major {
   alumni    Alumni[]
 }
 
+model Faq {
+  id        String   @id @default(uuid())
+  title     String
+  link      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+/**
+ * =============================================
+ * MODULE SURVEY
+ * =============================================
+ */
+
 model Survey {
   id              String               @id @default(uuid())
   greatingOpening Json
   greetingClosing Json
   documentUrl     String?
-  description     String
+  description     String?
   targetRole      TargetRole
   status          StatusSurvey         @default(DRAFT)
   createdAt       DateTime             @default(now())
@@ -204,6 +250,12 @@ model SurveyRules {
   updatedAt DateTime     @updatedAt
   majorId   String?
 }
+
+/**
+ * =============================================
+ * MODULE EMAIL
+ * =============================================
+ */
 
 model BlastEmail {
   id                   String                 @id @default(uuid())
@@ -246,19 +298,17 @@ model EmailTemplate {
   BlastEmail   BlastEmail[]
 }
 
+/**
+ * =============================================
+ * MODULE QUESTION
+ * =============================================
+ */
+
 model CodeQuestion {
   code     String     @id
   surveyId String
   survey   Survey     @relation(fields: [surveyId], references: [id])
   Question Question[]
-}
-
-model Faq {
-  id        String   @id @default(uuid())
-  title     String
-  link      String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
 }
 
 model Question {
@@ -298,6 +348,14 @@ model QuestionTree {
   @@index([answerQuestionTriggerId, questionPointerToId], name: "idx_answer_pointer")
 }
 
+model GroupQuestion {
+  id        String     @id @default(uuid())
+  groupName String
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  questions Question[]
+}
+
 model AnswerOptionQuestion {
   id                     String                 @id @default(uuid())
   questionId             String
@@ -312,6 +370,12 @@ model AnswerOptionQuestion {
   answerMultipleChoice   AnswerMultipleChoice[]
   answer                 Answer[]
 }
+
+/**
+ * =============================================
+ * MODULE RESPONSES
+ * =============================================
+ */
 
 model ResponseRespondent {
   id                   String                 @id @default(uuid())
@@ -351,12 +415,4 @@ model Answer {
 
   @@id([questionId, responseRespondentId, answerOptionQuestionId])
   @@index([responseRespondentId], name: "idx_response_respondent")
-}
-
-model GroupQuestion {
-  id        String     @id @default(uuid())
-  groupName String
-  createdAt DateTime   @default(now())
-  updatedAt DateTime   @updatedAt
-  questions Question[]
 }
