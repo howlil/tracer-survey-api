@@ -100,52 +100,7 @@ class AdminValidation {
         })
     }
 
-    static changePasswordSchema() {
-        return joi.object({
-            currentPassword: joi.string()
-                .required()
-                .messages({
-                    'any.required': 'Password saat ini wajib diisi'
-                }),
-
-            newPassword: joi.string()
-                .min(6)
-                .required()
-                .messages({
-                    'string.min': 'Password baru minimal 6 karakter',
-                    'any.required': 'Password baru wajib diisi'
-                }),
-
-            confirmPassword: joi.string()
-                .valid(joi.ref('newPassword'))
-                .required()
-                .messages({
-                    'any.only': 'Konfirmasi password tidak sesuai',
-                    'any.required': 'Konfirmasi password wajib diisi'
-                })
-        })
-    }
-
-    static adminQuerySchema() {
-        return joi.object({
-            page: joi.number()
-                .integer()
-                .min(1)
-                .default(1),
-
-            limit: joi.number()
-                .integer()
-                .min(1)
-                .max(100)
-                .default(10),
-
-            filter: joi.object({
-                searchName: joi.string()
-                    .optional()
-                    .allow('')
-            }).optional()
-        })
-    }
+  
 }
 
 module.exports = AdminValidation

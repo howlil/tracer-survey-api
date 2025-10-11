@@ -1,7 +1,6 @@
 const prisma = require("../../shared/configs/prisma.config")
 const PermissionUtil = require("../../shared/utils/permission.util")
 
-
 async function seedPersmission(logger) {
     try {
         logger.info("'🌱 Starting permission seeding...'")
@@ -35,9 +34,6 @@ async function seedPersmission(logger) {
 
         }
         logger.info(`✅ Seeding completed!`);
-        logger.info(`   - Created: ${created} permissions`);
-        logger.info(`   - Updated: ${existing} permissions`);
-        logger.info(`   - Total: ${permissions.length} permissions`);
 
     } catch (error) {
         throw error

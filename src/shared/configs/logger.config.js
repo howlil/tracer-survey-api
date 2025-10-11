@@ -1,6 +1,5 @@
 const winston = require('winston');
 const { createLogger, format, transports } = require('winston');
-const DailyRotateFile = require('winston-daily-rotate-file');
 const { combine, timestamp, printf, colorize } = format;
 const globalUtils = require('../utils/global.util');
 
@@ -29,7 +28,6 @@ class LoggerConfig {
     #createLogger() {
         return this.logger = createLogger({
             levels: this.levels,
-            format: this.#getLogFormat(),
             transports: this.#getTransports(),
             exitOnError: false
         });
@@ -57,28 +55,27 @@ class LoggerConfig {
     #getTransports() {
         const transportsList = [
             new transports.Console({
-                format: this.#getLogFormat(),
+                format: this.#consoleFormat(),  
                 level: this.#getLogLevel(),
             }),
-            new DailyRotateFile({
-                filename: 'logs/info/app-%DATE%.log',
-                datePattern: 'DD-MM-YYYY',
-                zippedArchive: true,
-                maxSize: '20m',
-                maxFiles: '14d',
-                format: this.fileFormat,
+            
+            new transports.File({
+                filename: 'logs/info/app.log',
+                format: this.#fileFormat(),  
                 level: 'info',
             }),
-            new DailyRotateFile({
-                filename: 'logs/errors/error-%DATE%.log',
-                datePattern: 'DD-MM-YYYY',
-                zippedArchive: true,
-                maxSize: '20m',
-                maxFiles: '30d',
-                format: this.fileFormat,
+            
+            new transports.File({
+                filename: 'logs/errors/error.log',
+                format: this.#fileFormat(),    
                 level: 'error',
-            })
-
+            }),
+            
+            new transports.File({
+                filename: 'logs/info/http.log',
+                format: this.#fileFormat(),   
+                level: 'http',
+            }),
         ]
         return transportsList;
     }
@@ -87,14 +84,10 @@ class LoggerConfig {
         return globalUtils.isDevelopment ? 'debug' : 'info';
     }
 
-    #getLogFormat() {
-        return globalUtils.isDevelopment ? this.#consoleFormat() : this.#fileFormat();
-    }
 
     getLogger() {
         return this.logger;
     }
-
 }
 
 module.exports = new LoggerConfig().getLogger();

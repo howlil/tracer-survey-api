@@ -4,9 +4,10 @@ const logger = require("./logger.config")
 
 class AwilixConfig {
     constructor() {
-        this.container = awilix.createContainer({ injectionMode: "PROXY" })
+        this.container = awilix.createContainer({ injectionMode: "CLASSIC" })
         this.registerCore();
         this.loadModules()
+
     }
 
     registerCore() {
@@ -17,8 +18,9 @@ class AwilixConfig {
     }
 
     loadModules() {
+
         this.container.loadModules([
-            '../../domain/*/*repository.js'
+            'src/domain/*/*repository.js'
         ], {
             formatName: 'camelCase',
             resolverOptions: {
@@ -27,22 +29,24 @@ class AwilixConfig {
         })
 
         this.container.loadModules([
-            '../../domain/*/*service.js'
+            'src/domain/*/*service.js'
         ], {
             formatName: 'camelCase',
             resolverOptions: {
                 lifetime: awilix.Lifetime.SINGLETON
             }
         })
+        console.log('🔧 After loading services:', Object.keys(this.container.registrations))
 
         this.container.loadModules([
-            '../../domain/*/*controller.js'
+            'src/domain/*/*controller.js'
         ], {
             formatName: 'camelCase',
             resolverOptions: {
                 lifetime: awilix.Lifetime.SCOPED
             }
         })
+
 
     }
 

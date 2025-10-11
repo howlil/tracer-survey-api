@@ -34,8 +34,8 @@ class BaseRoute {
         return this
     }
 
-    put(path, method, ...middlewares) {
-        this.router.put(path, ...middlewares, this.api(method))
+    patch(path, method, ...middlewares) {
+        this.router.patch(path, ...middlewares, this.api(method))
         return this
     }
 

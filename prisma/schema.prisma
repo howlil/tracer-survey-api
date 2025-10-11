@@ -1,6 +1,5 @@
 generator client {
   provider = "prisma-client-js"
-  output   = "../src/generated/prisma"
 }
 
 datasource db {
@@ -103,7 +102,7 @@ model RolePermission {
 
 model Permission {
   id              String           @id @default(uuid())
-  permissionName  String  @unique
+  permissionName  String           @unique
   resource        String?
   action          String?
   createdAt       DateTime         @default(now())
@@ -160,31 +159,31 @@ model Manager {
 }
 
 model Faculty {
-  id          String   @id @default(uuid())
+  id          String        @id @default(uuid())
   facultyName String
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
   majors      Major[]
+  SurveyRules SurveyRules[]
 }
 
 model Major {
-  id          String        @id @default(uuid())
-  majorName   String
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
-  faculty     Faculty       @relation(fields: [facultyId], references: [id])
-  facultyId   String
-  alumni      Alumni[]
-  surveyRules SurveyRules[]
+  id        String   @id @default(uuid())
+  majorName String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  faculty   Faculty  @relation(fields: [facultyId], references: [id])
+  facultyId String
+  alumni    Alumni[]
 }
 
 model Survey {
   id              String               @id @default(uuid())
-  surveyMasterId  String
   greatingOpening Json
   greetingClosing Json
-  version         Int                  @default(1)
   documentUrl     String?
+  description     String
+  targetRole      TargetRole
   status          StatusSurvey         @default(DRAFT)
   createdAt       DateTime             @default(now())
   updatedAt       DateTime             @updatedAt
@@ -195,15 +194,15 @@ model Survey {
 }
 
 model SurveyRules {
-  id         String       @id @default(uuid())
-  surveyId   String
-  majorId    String
-  degree     TargetDegree
-  targetRole TargetRole
-  survey     Survey       @relation(fields: [surveyId], references: [id])
-  major      Major        @relation(fields: [majorId], references: [id])
-  createdAt  DateTime     @default(now())
-  updatedAt  DateTime     @updatedAt
+  id        String       @id @default(uuid())
+  surveyId  String
+  facultyId String
+  degree    TargetDegree
+  survey    Survey       @relation(fields: [surveyId], references: [id])
+  faculty   Faculty      @relation(fields: [facultyId], references: [id])
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+  majorId   String?
 }
 
 model BlastEmail {

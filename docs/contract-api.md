@@ -49,3 +49,15 @@ opsi text
 - pesan diakhir
 
 - simpan data sementara 
+
+
+NIM | Nama Lengkap | Email | Fakultas | Prodi | Jenjang | Tahun Lulus | Periode Wisuda
+
+src/domain/
+├── auth/                    // 5 tables (Admin, Role, Permission, AdminRole, RolePermission)
+├── user/                    // 4 tables (Respondent, Alumni, PinAlumni, Manager)
+├── academic/                // 2 tables (Faculty, Major, FAQ)
+├── survey/                  // 2 tables (Survey, SurveyRules)
+├── email/           // 3 tables (BlastEmail, BlastEmailRespondent, EmailTemplate)
+├── response/                // 3 tables (ResponseRespondent, Answer, AnswerMultipleChoice)
+    question/                //  Question, QuestionTree, AnswerOptionQuestion, GroupQuestion, CodeQuestion

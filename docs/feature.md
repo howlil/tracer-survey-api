@@ -1,12 +1,22 @@
+<!-- @format -->
+
 # SPEK API
 
 base URL
 
 ```
-https://example.com/api/v1
+https://example.com/api/
 ```
 
 ## Auth
+
+#### login admin
+
+#### login alumni
+
+#### login manager
+
+------------------------------------------------
 
 ## ADMIN
 
@@ -15,15 +25,9 @@ https://example.com/api/v1
 #### get admin
 
 ```
-GET /admins
+GET v1/admins
 
-Query {
-    page
-    limit
-    filter : {
-        searchName
-    }
-}
+
 
 response {
     status
@@ -36,28 +40,23 @@ response {
         role
         isActive
     }
-    meta {
-        total
-        limit
-        page
-        limitPages
-    }
 }
-
 
 ```
 
 #### Add admin
 
 ```
-POST /admin
+POST v1/admin
 
 request {
      name
      email
      username
+     isaActive
      role : [
-        id 
+        id,
+        id
      ]
 }
 
@@ -81,14 +80,14 @@ response {
 #### edit admin
 
 ```
-PATCH /admin/{id}
+PATCH v1/admin/{id}
 
 request {
      name
      email
-     password
      username
-     role
+     role : [id]
+     isActive
 }
 
 response {
@@ -109,7 +108,7 @@ response {
 #### delete admin
 
 ```
-DELETE /admin/{id}
+DELETE v1/admin/{id}
 
 
 response {
@@ -123,7 +122,20 @@ response {
 #### get role and permision
 
 ```
-GET /admin/roles
+GET /v2/roles
+response {
+    status
+    message
+    data {
+        id
+        roleName
+        description
+    }
+}
+
+
+
+GET /v1/roles
 
 response {
     status
@@ -146,17 +158,15 @@ response {
 
 #### add role and permision
 
-POST /admin/role
+POST v1/role
 
 request {
-     roleName
-     description
-     rolePermission[
-        {
-            id
-            permisionName
-        },
-     ]
+roleName
+description
+rolePermission[
+        id
+    ]
+
 }
 
 response {
@@ -167,27 +177,24 @@ response {
         roleName
         description
         rolePermission[
-            {
-                id
-                permisionName
-            },
-        ]
+        {
+            id
+            permisionName
+        },
+    ]
     }
 }
 
 #### update role and permision
 
 ```
-PATCH /admin/role/{id}
+PATCH v1/rolee/{id}
 
 request {
      roleName
      description
      rolePermission[
-        {
             id
-            permisionName
-        },
      ]
 }
 
@@ -213,7 +220,7 @@ response {
 CONSTRAINT : if there is a admin in role, the role cant be deleted
 
 ```
-DELETE /admin/role/{id}
+DELETE v1/role/{id}
 
 response {
     status
@@ -222,8 +229,296 @@ response {
 
 ```
 
-### Manage Email Blasting
 
-### Manage Tracer
+### Manage database Alumni
 
-## Tracer
+#### get alumni 
+
+GET v1/alumnis
+
+req query {
+    page
+    limit
+    where {
+        search,
+        facultyId
+        majorId
+        degree
+        graduateYear
+        periodegraduate
+    }
+}
+
+res {
+    status
+    message
+    data : {
+        id
+        nim
+        namaLengkap
+        email
+        fakultas
+        prodi
+        jenjang
+        tahunLulus
+        periodeWisuda
+    }
+    meta :{
+        page
+        limit 
+        total
+        totalPages
+    }
+}
+
+
+#### POST alumni 
+
+POST v1/alumni
+
+// NOTE pin alumni langsung kebikin jadi ada 2 untuk alumni dan untuk usernya
+
+req : {
+    nim
+    namaLengkap
+    email
+    fakultas
+    prodi
+    jenjang
+    tahunLulus
+    periodeWisuda
+}
+
+res {
+    status
+    message
+    data : {
+        id
+        nim
+        namaLengkap
+        email
+        fakultas
+        prodi
+        jenjang
+        tahunLulus
+        periodeWisuda
+    }
+}
+
+#### PATCH alumni 
+
+PATCH v1/alumni
+
+req : {
+    nim
+    namaLengkap
+    email
+    fakultas
+    prodi
+    jenjang
+    tahunLulus
+    periodeWisuda
+}
+
+res {
+    status
+    message
+    data : {
+        id
+        nim
+        namaLengkap
+        email
+        fakultas
+        prodi
+        jenjang
+        tahunLulus
+        periodeWisuda
+    }
+}
+
+
+#### POST EXCEL alumni 
+
+POST v1/alumni/import-excel
+
+req.file : {
+    excelAlumni
+}
+
+res {
+    status
+    message
+}
+
+
+### manage manager
+
+#### get manager 
+
+GET v1/managers
+
+req query {
+    page
+    limit
+    where {
+        search,
+        company
+    }
+}
+
+res {
+    status
+    message
+    data : {
+        id
+        namaLengkap
+        email
+        perusahaan
+        posisi
+        alumni : []
+    }
+    meta :{
+        page
+        limit 
+        total
+        totalPages
+    }
+}
+
+
+#### POST manager 
+
+POST v1/managers
+
+// pin alumni dapat ketika mereka terhubung
+
+req : {
+        namaLengkap
+        email
+        perusahaan
+        posisi
+        alumni : []
+    }
+
+res {
+    status
+    message
+    data : {
+        id
+        namaLengkap
+        email
+        perusahaan
+        posisi
+        alumni : []
+    }
+}
+
+#### PATCH manager 
+
+PATCH v1/manager/{id}
+
+req : {
+        namaLengkap
+        email
+        perusahaan
+        posisi
+        alumni : []
+    }
+
+res {
+    status
+    message
+    data : {
+        id
+        namaLengkap
+        email
+        perusahaan
+        posisi
+        alumni : []
+    }
+}
+
+#### POST EXCEL manager 
+
+PATCH v1/manager/import-excel
+
+req.file : {
+    excelManager
+}
+
+res {
+    status
+    message
+}
+
+
+
+
+
+
+
+-----------------------------------------------------
+
+### manage FAQ
+
+#### get FAQ
+
+GET v1/faqs
+
+res : {
+    status
+    message 
+    data :[{
+        id
+        judul
+        link
+    }]
+}
+
+#### POST FAQ
+
+POST v1/faq
+
+res : {
+        judul
+        link
+    }
+
+res : {
+    status
+    message 
+    data :{
+        id
+        judul
+        link
+    }
+}
+
+#### PATCH FAQ
+
+POST v1/faq/{id}
+
+res : {
+        judul
+        link
+    }
+
+res : {
+    status
+    message 
+    data :{
+        id
+        judul
+        link
+    }
+}
+
+#### DELET FAQ
+
+DEL v1/faq/{id}
+
+req : {
+        id
+}
+
+-------------------------------------------------

@@ -16,23 +16,21 @@ class Main {
     }
 
     plugin() {
-        this.#app.use(errorMiddleware.expressErrorHandler);
         this.#app.use(httpMiddleware)
-        this.#app.use(express.json({ limit: '20mb', type: 'application/json' }));
+        this.#app.use(express.json({ limit: '20mb', type: 'application/json', verify: (req, res, buf, encoding) => { req.rawBody = buf.toString(); } }));
         this.#app.use(express.urlencoded({ extended: true }));
         this.#app.use((req, res, next) => { req.container = awilixConfig.scope; next() })
         this.#app.use(require("./domain/index.route"))
+        this.#app.use(errorMiddleware.expressErrorHandler);
 
     }
 
-    startUp (){
+    startUp() {
         const PORT = process.env.PORT
-        this.#app.listen(PORT,()=>{
+        this.#app.listen(PORT, () => {
             logger.info(`server Running in ${PORT}`)
         })
     }
-
-
 }
 
 module.exports = new Main();

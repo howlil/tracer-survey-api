@@ -8,10 +8,8 @@ class PermissionUtil {
 
         const permissions = []
 
-        // mapping resources constant
         Object.values(RESOURCES).forEach(resource => {
 
-            // mapping resources constant especially actions and push into array permission
             resource.actions.forEach(action => {
                 permissions.push({
                     permissionName: `${resource.name}.${action}`,
@@ -19,8 +17,6 @@ class PermissionUtil {
                     action: action
                 })
             });
-
-            // generate sub-resource if exists
 
             if (resource.subResources) {
                 Object.values(resource.subResources).forEach(subResource => {

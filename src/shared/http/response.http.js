@@ -13,7 +13,7 @@ class ResponseHttp {
             message: this.message,
         }
 
-        if (this.data !== null || this.data !== undefined){
+        if (this.data !== null && this.data !== undefined){
             responseBody.data = this.data
         }
         

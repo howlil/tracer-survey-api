@@ -39,4 +39,4 @@ class RequestHttp {
 
 }
 
-module.exports = new RequestHttp();
+module.exports =  RequestHttp

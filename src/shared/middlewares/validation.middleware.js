@@ -50,4 +50,4 @@ class ValidationMiddleware {
 
 }
 
-module.exports = ValidationMiddleware;
+module.exports = new ValidationMiddleware();

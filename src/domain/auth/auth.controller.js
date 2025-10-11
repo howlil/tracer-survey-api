@@ -1,8 +1,10 @@
 const BaseController = require("../../shared/base/base.controller")
 
 class AdminController extends BaseController {
-    constructor(opts){
-        super(opts.service,opts.logger)
+    constructor(adminService, logger) {
+        super(adminService, logger)
+        this.adminService = adminService
+        this.logger = logger
     }
 }
 

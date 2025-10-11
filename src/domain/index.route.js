@@ -2,14 +2,35 @@ const express = require('express')
 
 class IndexRoute {
     #app
-    constructor(){
+    constructor() {
         this.#app = express.Router()
+        this.setUp()
+        this.wellcome()
     }
 
-    setUp () {
-        this.#app.use("/api",require("./admin/admin.route"))
-    }   
+    setUp() {
+
+        this.#app.use("/api", require("./admin/admin.route"))
+    }
+
+    getRouter() {
+        return this.#app
+    }
+
+    wellcome() {
+        this.#app.get("/", (req, res) => {
+            res.status(200).json(
+                {
+                    "success": true,
+                    "message": "API Ready"
+                }
+            )
+        })
+
+
+    }
+
 
 }
 
-module.exports = IndexRoute
+module.exports = new IndexRoute().getRouter()

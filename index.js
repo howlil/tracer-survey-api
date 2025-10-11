@@ -1,10 +1,9 @@
 const main = require('./src/index');
 
 try {
-    main()
+    main.startUp()
 } catch (error) {
     throw new Error(error);
-    
 }
 
 
