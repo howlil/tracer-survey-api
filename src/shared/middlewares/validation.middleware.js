@@ -6,8 +6,8 @@ class ValidationMiddleware {
         return (req, res, next) => {
             try {
 
-                if (!schema || typeof schema !== 'function') {
-                    throw new ErrorFactory.validationError("Schema is not a function or is undefined")
+                if (!schema || typeof schema.validate !== 'function') {
+                    throw ErrorFactory.validationError("Schema is not a valid Joi schema")
                 }
 
                 const result = schema.validate(req[type])
@@ -21,7 +21,7 @@ class ValidationMiddleware {
                             type: detail.type
                         }))
 
-                        throw new ErrorFactory.validationError(errors)
+                        throw ErrorFactory.validationError(errors)
                     }
 
                 }

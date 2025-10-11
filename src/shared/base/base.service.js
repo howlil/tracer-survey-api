@@ -10,15 +10,14 @@ class BaseService {
             const {
                 page = 1,
                 limit = 10,
-                filter = {},
+                where = {},
                 orderBy = {},
                 select = {},
                 include = {}
             } = options;
 
-            const where = this.repository.constructor.buildWhereClause(filter);
 
-            const result = await this.repository.paginate({
+            const result = await this.repository.getAll({
                 page,
                 limit,
                 where,
@@ -35,9 +34,9 @@ class BaseService {
         }
     }
 
-    async findMany(where = {}, options = {}) {
+    async findMany(options = {}) {
         try {
-            const { orderBy = {}, select = {}, include = {} } = options;
+            const { where = {}, orderBy = {}, select = {}, include = {} } = options;
 
             const result = await this.repository.findMany({
                 where,
@@ -76,9 +75,9 @@ class BaseService {
         }
     }
 
-    async findOne(where = {}, options = {}) {
+    async findOne(options = {}) {
         try {
-            const { select = {}, include = {} } = options;
+            const { where = {}, select = {}, include = {} } = options;
 
             const result = await this.repository.findFirst({
                 where,
@@ -93,10 +92,10 @@ class BaseService {
         }
     }
 
-    async create(data, options = {}) {
+    async create(options = {}) {
         try {
 
-            const { select = {}, include = {} } = options
+            const { data, select = {}, include = {} } = options
 
             const result = await this.repository.create({
                 data,
@@ -111,12 +110,12 @@ class BaseService {
         }
     }
 
-    async update(id, data, options = {}) {
+    async update(options = {}) {
         try {
-            const { select = {}, include = {} } = options
+            const { where, data, select = {}, include = {} } = options
             const result = await this.repository.update({
-                where: { id },
-                data: data,
+                where,
+                data,
                 select: Object.keys(select).length ? select : undefined,
                 include: Object.keys(include).length ? include : undefined
             })

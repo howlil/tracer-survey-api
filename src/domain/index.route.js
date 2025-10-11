@@ -9,8 +9,7 @@ class IndexRoute {
     }
 
     setUp() {
-
-        this.#app.use("/api", require("./admin/admin.route"))
+        this.#app.use("/api",require("./faq/faq.route"))
     }
 
     getRouter() {

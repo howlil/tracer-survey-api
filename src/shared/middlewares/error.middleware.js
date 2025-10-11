@@ -23,12 +23,24 @@ class ErrorMiddleware {
             }
 
             if (err instanceof PrismaClientKnownRequestError) {
-                const detailMessage = {
-                    code: err.code,
-                    meta: err.meta,
-                    message: this.cleanErrorMessage(err.message)
+                if (err.code === 'P2025') {
+                    return this.createErrorResponse(res, 404, "Record Not Found", {
+                        message: "The requested record was not found",
+                        type: "not_found"
+                    });
                 }
-                return this.createErrorResponse(res, 400, "Database Error", detailMessage);
+
+                if (err.code === 'P2002') {
+                    return this.createErrorResponse(res, 409, "Conflict", {
+                        message: "A record with this information already exists",
+                        type: "duplicate_entry"
+                    });
+                }
+
+                return this.createErrorResponse(res, 400, "Database Error", {
+                    message: this.cleanErrorMessage(err.message),
+                    type: "database_error"
+                });
             }
 
             if (err instanceof PrismaClientValidationError) {
@@ -53,21 +65,21 @@ class ErrorMiddleware {
 
     cleanErrorMessage(message) {
         if (typeof message !== 'string') return message;
-        
+
         return message
-            .replace(/\u001b\[[0-9;]*m/g, '') 
-            .replace(/\u001b\[[0-9;]*[a-zA-Z]/g, '') 
-            .replace(/\u001b\[[0-9;]*[a-zA-Z]/g, '') 
+            .replace(/\u001b\[[0-9;]*m/g, '')
+            .replace(/\u001b\[[0-9;]*[a-zA-Z]/g, '')
+            .replace(/\u001b\[[0-9;]*[a-zA-Z]/g, '')
             .trim();
     }
 
     parsePrismaValidationError(message) {
         const cleanMessage = this.cleanErrorMessage(message);
-        
+
         const fieldMatch = cleanMessage.match(/Argument `([^`]+)`/);
         const errorMatch = cleanMessage.match(/Expected ([^,]+), provided ([^.]+)/);
         const missingFieldMatch = cleanMessage.match(/Argument `([^`]+)` is missing/);
-        
+
         if (missingFieldMatch) {
             return {
                 field: missingFieldMatch[1],
@@ -75,7 +87,7 @@ class ErrorMiddleware {
                 type: 'missing_field'
             };
         }
-        
+
         if (fieldMatch && errorMatch) {
             return {
                 field: fieldMatch[1],
@@ -85,7 +97,7 @@ class ErrorMiddleware {
                 type: 'invalid_type'
             };
         }
-        
+
         return {
             message: cleanMessage,
             type: 'validation_error'

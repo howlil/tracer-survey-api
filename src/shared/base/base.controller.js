@@ -16,7 +16,7 @@ class BaseController {
                 filter: filter || {}
             })
 
-            return ResponseFactory.get(result).send(res)
+            return ResponseFactory.getAll(result.data, result.meta).send(res)
 
         } catch (error) {
             this.logger.error(error)
@@ -26,8 +26,8 @@ class BaseController {
 
     async findMany(req, res, next) {
         try {
-        
-            const {filter} = req.extract.getQuery(["filter"])
+
+            const { filter } = req.extract.getQuery(["filter"])
 
             const result = await this.service.findMany({
                 filter: filter
@@ -44,7 +44,7 @@ class BaseController {
     async create(req, res, next) {
         try {
             const data = req.extract.getBody()
-            await this.service.create(data)
+            await this.service.create({ data })
 
             return ResponseFactory.created(data).send(res)
 
@@ -59,7 +59,10 @@ class BaseController {
             const { id } = req.extract.getParams(["id"])
             const data = req.extract.getBody()
 
-            await this.service.update(id, data)
+            await this.service.update({
+                where: { id },
+                data
+            })
 
             return ResponseFactory.updated(data).send(res)
         } catch (error) {

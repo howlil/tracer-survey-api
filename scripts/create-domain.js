@@ -24,6 +24,8 @@ class DomainGenerator {
             this.generateRoute(domainDir, DomainName, domainNameCamel)
             this.generateValidation(domainDir, DomainName, domainNameCamel)
 
+            console.log(`🎉 Successfully generated domain: ${DomainName}`)
+            console.log(`📁 Location: src/domain/${domainNameLower}/`)
 
         } catch (error) {
             console.error('❌ Error generating domain:', error.message)
@@ -38,11 +40,8 @@ class DomainGenerator {
 
 class ${DomainName}Repository extends BaseRepository {
     constructor(prisma, logger) {
-        super(prisma, logger) 
- 
+        super(prisma.${domainNameCamel}, logger)
     }
-
-  
 }
 
 module.exports = ${DomainName}Repository`
@@ -59,10 +58,9 @@ module.exports = ${DomainName}Repository`
 
 class ${DomainName}Service extends BaseService {
     constructor(${domainNameCamel}Repository, logger) {
-        super(${domainNameCamel}Repository, logger) 
+        super(${domainNameCamel}Repository, logger)
         this.${domainNameCamel}Repository = ${domainNameCamel}Repository
     }
-
 }
 
 module.exports = ${DomainName}Service`
@@ -79,11 +77,10 @@ module.exports = ${DomainName}Service`
 
 class ${DomainName}Controller extends BaseController {
     constructor(${domainNameCamel}Service, logger) {
-        super(${domainNameCamel}Service, logger)  
+        super(${domainNameCamel}Service, logger)
         this.${domainNameCamel}Service = ${domainNameCamel}Service
         this.logger = logger
     }
-
 }
 
 module.exports = ${DomainName}Controller`
@@ -101,7 +98,7 @@ const ${domainNameCamel}Controller = require("./${domainNameCamel}.controller")
 
 class ${DomainName}Route extends BaseRoute {
     constructor() {
-        super(${domainNameCamel}Controller)  
+        super(${domainNameCamel}Controller)
     }
 
     static getInstance() {
@@ -112,7 +109,11 @@ class ${DomainName}Route extends BaseRoute {
     }
 
     createRoute() {
-  
+        this.get("/v1/${domainNameCamel}s", "findMany")
+        this.get("/v1/${domainNameCamel}/:id", "findUnique")
+        this.post("/v1/${domainNameCamel}", "create")
+        this.patch("/v1/${domainNameCamel}/:id", "update")
+        this.delete("/v1/${domainNameCamel}/:id", "delete")
     }
 }
 
@@ -129,8 +130,32 @@ module.exports = ${DomainName}Route.getInstance().getRouter()`
         const content = `const joi = require('joi')
 
 class ${DomainName}Validation {
+    static createSchema() {
+        return joi.object({
+            name: joi.string()
+                .min(2)
+                .max(100)
+                .required()
+                .messages({
+                    'string.min': 'Nama minimal 2 karakter',
+                    'string.max': 'Nama maksimal 100 karakter',
+                    'any.required': 'Nama wajib diisi'
+                })
+        })
+    }
 
-  
+    static updateSchema() {
+        return joi.object({
+            name: joi.string()
+                .min(2)
+                .max(100)
+                .optional()
+                .messages({
+                    'string.min': 'Nama minimal 2 karakter',
+                    'string.max': 'Nama maksimal 100 karakter'
+                })
+        })
+    }
 }
 
 module.exports = ${DomainName}Validation`
@@ -148,7 +173,6 @@ module.exports = ${DomainName}Validation`
     }
 }
 
-// CLI Usage
 if (require.main === module) {
     const args = process.argv.slice(2)
     
@@ -160,7 +184,6 @@ if (require.main === module) {
     }
 
     const domainName = args[0]
-
     const generator = new DomainGenerator()
     generator.generateDomain(domainName)
 }

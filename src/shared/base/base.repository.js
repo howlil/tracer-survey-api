@@ -34,7 +34,6 @@ class BaseRepository {
 
     async findMany(options = {}) {
         try {
-
             return await this.prisma.findMany(options);
         } catch (error) {
             this.logger.error(error);
@@ -80,13 +79,13 @@ class BaseRepository {
         )
 
         try {
-            const [total, data] = await this.prisma.$transaction([
+            const [total, data] = await Promise.all([
                 this.prisma.count({ where }),
                 this.prisma.findMany({
                     skip,
                     take: limit,
                     where,
-                    orderBy,
+                    orderBy: Object.keys(orderBy).length ? orderBy : undefined,
                     select: Object.keys(filteredSelect).length ? filteredSelect : undefined,
                     include: Object.keys(include).length ? include : undefined
                 })
