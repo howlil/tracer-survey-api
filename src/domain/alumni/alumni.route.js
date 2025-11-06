@@ -14,11 +14,7 @@ class AlumniRoute extends BaseRoute {
     }
 
     createRoute() {
-        this.get("/v1/alumnis", "findMany")
-        this.get("/v1/alumni/:id", "findUnique")
-        this.post("/v1/alumni", "create")
-        this.patch("/v1/alumni/:id", "update")
-        this.delete("/v1/alumni/:id", "delete")
+        this.get("/v1/alumni", "findMany")
     }
 }
 

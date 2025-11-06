@@ -6,13 +6,11 @@ class FacultyService extends BaseService {
         this.facultyRepository = facultyRepository
     }
 
-    async facultyWithMajor() {
+    async findMany() {
         try {
-            return await this.facultyRepository.facultyWithMajor()
-
-         
-
+            return await this.facultyRepository.findMany()
         } catch (error) {
+            this.logger.error(error)
             throw error
         }
     }

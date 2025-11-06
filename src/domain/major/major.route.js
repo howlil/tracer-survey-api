@@ -15,9 +15,6 @@ class MajorRoute extends BaseRoute {
 
     createRoute() {
         this.get("/v1/majors", "findMany")
-        this.post("/v1/major", "create")
-        this.patch("/v1/major/:id", "update")
-        this.delete("/v1/major/:id", "delete")
     }
 }
 

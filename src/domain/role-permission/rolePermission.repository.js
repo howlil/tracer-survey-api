@@ -96,19 +96,313 @@ class RolePermissionRepository extends BaseRepository {
         }
     }
 
-    async findMany() {
+    async findManyWithPagination(options = {}) {
         try {
-            return await this.prisma.findMany({
-                select: {
-                    id: true,
-                    roleName: true,
-                    description: true
+            const { page = 1, limit = 10, search } = options
+
+            const where = {}
+            if (search) {
+                where.roleName = { contains: search, mode: 'insensitive' }
+            }
+
+            // Use getAll from base repository
+            const result = await this.getAll({
+                page,
+                limit,
+                where,
+                include: {
+                    rolePermission: {
+                        include: {
+                            permission: {
+                                select: {
+                                    id: true,
+                                    resource: true,
+                                    action: true
+                                }
+                            }
+                        }
+                    }
+                },
+                orderBy: { createdAt: 'desc' }
+            })
+
+            const formattedRoles = result.data.map(role => ({
+                id: role.id,
+                name: role.roleName,
+                description: role.description,
+                permissions: this.groupPermissionsByResource(role.rolePermission)
+            }))
+
+            return {
+                roles: formattedRoles,
+                meta: result.meta
+            }
+        } catch (error) {
+            this.logger.error(error)
+            throw error
+        }
+    }
+
+    async findUniqueWithPermissions(options = {}) {
+        try {
+            const role = await this.prisma.findUnique({
+                ...options,
+                include: {
+                    rolePermission: {
+                        include: {
+                            permission: {
+                                select: {
+                                    id: true,
+                                    resource: true,
+                                    action: true
+                                }
+                            }
+                        }
+                    }
                 }
             })
 
+            if (!role) {
+                throw new Error('Role not found')
+            }
+
+            return {
+                id: role.id,
+                name: role.roleName,
+                description: role.description,
+                permissions: this.groupPermissionsByResource(role.rolePermission)
+            }
         } catch (error) {
+            this.logger.error(error)
             throw error
         }
+    }
+
+    async createWithPermissions(options = {}) {
+        try {
+            const { roleData, permissions = [] } = options
+
+            const result = await this.prismaClient.$transaction(async (tx) => {
+                // Get or create permissions
+                const permissionIds = await this.getOrCreatePermissions(tx, permissions)
+
+                // Create role
+                const role = await tx.role.create({
+                    data: {
+                        roleName: roleData.name,
+                        description: roleData.description,
+                        rolePermission: {
+                            create: permissionIds.map(permissionId => ({
+                                permissionId
+                            }))
+                        }
+                    },
+                    include: {
+                        rolePermission: {
+                            include: {
+                                permission: {
+                                    select: {
+                                        id: true,
+                                        resource: true,
+                                        action: true
+                                    }
+                                }
+                            }
+                        }
+                    }
+                })
+
+                return {
+                    id: role.id,
+                    name: role.roleName,
+                    description: role.description,
+                    permissions: this.groupPermissionsByResource(role.rolePermission)
+                }
+            })
+
+            return result
+        } catch (error) {
+            this.logger.error(error)
+            throw error
+        }
+    }
+
+    async updateWithPermissions(options = {}) {
+        try {
+            const { where, roleData, permissions } = options
+
+            const result = await this.prismaClient.$transaction(async (tx) => {
+                // Update role data
+                const updateData = {}
+                if (roleData.name !== undefined) updateData.roleName = roleData.name
+                if (roleData.description !== undefined) updateData.description = roleData.description
+
+                if (Object.keys(updateData).length > 0) {
+                    await tx.role.update({
+                        where,
+                        data: updateData
+                    })
+                }
+
+                // Update permissions if provided
+                if (permissions !== undefined) {
+                    // Delete existing permissions
+                    await tx.rolePermission.deleteMany({
+                        where: { roleId: where.id }
+                    })
+
+                    // Get or create new permissions
+                    if (permissions.length > 0) {
+                        const permissionIds = await this.getOrCreatePermissions(tx, permissions)
+
+                        // Create new permissions
+                        await tx.rolePermission.createMany({
+                            data: permissionIds.map(permissionId => ({
+                                roleId: where.id,
+                                permissionId
+                            }))
+                        })
+                    }
+                }
+
+                // Fetch updated role with permissions
+                const role = await tx.role.findUnique({
+                    where,
+                    include: {
+                        rolePermission: {
+                            include: {
+                                permission: {
+                                    select: {
+                                        id: true,
+                                        resource: true,
+                                        action: true
+                                    }
+                                }
+                            }
+                        }
+                    }
+                })
+
+                return {
+                    id: role.id,
+                    name: role.roleName,
+                    description: role.description,
+                    permissions: this.groupPermissionsByResource(role.rolePermission),
+                    createdAt: role.createdAt,
+                    updatedAt: role.updatedAt
+                }
+            })
+
+            return result
+        } catch (error) {
+            this.logger.error(error)
+            throw error
+        }
+    }
+
+    async getAvailableResources() {
+        try {
+            // Return static list from API spec
+            return {
+                admin: {
+                    name: "admin",
+                    actions: ["create", "read", "update", "delete"]
+                },
+                role: {
+                    name: "role",
+                    actions: ["create", "read", "update", "delete"]
+                },
+                survey: {
+                    name: "survey",
+                    actions: ["create", "read", "update", "delete", "publish", "archive"]
+                },
+                question: {
+                    name: "question",
+                    actions: ["create", "read", "update", "delete"]
+                },
+                respondent: {
+                    name: "respondent",
+                    actions: ["create", "read", "update", "delete", "import"]
+                },
+                email: {
+                    name: "email",
+                    actions: ["create", "read", "update", "delete", "send"]
+                },
+                response: {
+                    name: "response",
+                    actions: ["read", "export", "delete"]
+                },
+                faculty: {
+                    name: "faculty",
+                    actions: ["manage"]
+                },
+                major: {
+                    name: "major",
+                    actions: ["manage"]
+                },
+                faq: {
+                    name: "faq",
+                    actions: ["manage"]
+                }
+            }
+        } catch (error) {
+            this.logger.error(error)
+            throw error
+        }
+    }
+
+    // Helper method to group permissions by resource
+    groupPermissionsByResource(rolePermissions) {
+        const grouped = {}
+        rolePermissions.forEach(rp => {
+            const resource = rp.permission.resource
+            const action = rp.permission.action
+            if (!grouped[resource]) {
+                grouped[resource] = []
+            }
+            if (!grouped[resource].includes(action)) {
+                grouped[resource].push(action)
+            }
+        })
+
+        return Object.keys(grouped).map(resource => ({
+            resource,
+            actions: grouped[resource]
+        }))
+    }
+
+    // Helper method to get or create permissions
+    async getOrCreatePermissions(tx, permissions) {
+        const permissionIds = []
+
+        for (const perm of permissions) {
+            const { resource, actions } = perm
+
+            for (const action of actions) {
+                // Try to find existing permission
+                let permission = await tx.permission.findFirst({
+                    where: {
+                        resource,
+                        action
+                    }
+                })
+
+                // Create if not exists
+                if (!permission) {
+                    permission = await tx.permission.create({
+                        data: {
+                            permissionName: `${resource}:${action}`,
+                            resource,
+                            action
+                        }
+                    })
+                }
+
+                permissionIds.push(permission.id)
+            }
+        }
+
+        return permissionIds
     }
 
 

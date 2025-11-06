@@ -8,13 +8,12 @@ class FacultyController extends BaseController {
         this.logger = logger
     }
 
-    async facultyWithMajor(req, res, next) {
+    async findMany(req, res, next) {
         try {
-            const response = await this.facultyService.facultyWithMajor()
-
-            return ResponseFactory.get(response).send(res)
-
+            const result = await this.facultyService.findMany()
+            return ResponseFactory.get(result).send(res)
         } catch (error) {
+            this.logger.error(error)
             next(error)
         }
     }

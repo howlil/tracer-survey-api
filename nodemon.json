@@ -1,0 +1,15 @@
+{
+  "watch": ["src", "index.js", "swagger.json"],
+  "ext": "js,json",
+  "ignore": ["node_modules", "logs", "*.log", ".git"],
+  "exec": "node index.js",
+  "env": {
+    "NODE_ENV": "development"
+  },
+  "delay": 1000,
+  "verbose": true,
+  "restartable": "rs",
+  "legacyWatch": true,
+  "polling": true
+}
+

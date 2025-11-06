@@ -5,6 +5,28 @@ class AlumniService extends BaseService {
         super(alumniRepository, logger)
         this.alumniRepository = alumniRepository
     }
+
+    async findMany(options = {}) {
+        try {
+            const { page = 1, limit = 10, search, facultyId, majorId, degree, graduatedYear, graduatePeriode } = options
+
+            const result = await this.alumniRepository.findManyWithPagination({
+                page,
+                limit,
+                search,
+                facultyId,
+                majorId,
+                degree,
+                graduatedYear,
+                graduatePeriode
+            })
+
+            return result
+        } catch (error) {
+            this.logger.error(error)
+            throw error
+        }
+    }
 }
 
 module.exports = AlumniService

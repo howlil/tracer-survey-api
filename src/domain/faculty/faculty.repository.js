@@ -27,14 +27,20 @@ class FacultyRepository extends BaseRepository {
 
     async findMany() {
         try {
-            return await this.prisma.findMany({
+            const faculties = await this.prisma.findMany({
                 select: {
                     id: true,
                     facultyName: true,
-                }
+                },
+                orderBy: { facultyName: 'asc' }
             })
 
+            return faculties.map(faculty => ({
+                id: faculty.id,
+                name: faculty.facultyName
+            }))
         } catch (error) {
+            this.logger.error(error)
             throw error
         }
     }

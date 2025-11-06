@@ -2,14 +2,21 @@ FROM node:18-slim
 
 WORKDIR /app
 
+RUN apt-get update -y && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
+
+RUN npm install -g pnpm
+
 COPY package.json pnpm-lock.yaml ./
 
-RUN npm install -g pnpm && pnpm install
+COPY prisma ./prisma
+
+RUN pnpm install
+
+COPY entrypoint.sh ./entrypoint.sh
+RUN chmod +x ./entrypoint.sh
 
 COPY . .
 
-RUN pnpx prisma generate
+EXPOSE 5000
 
-EXPOSE 3000
-
-CMD ["pnpm","start"]
+ENTRYPOINT ["./entrypoint.sh"]

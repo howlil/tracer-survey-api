@@ -15,10 +15,6 @@ class FacultyRoute extends BaseRoute {
 
     createRoute() {
         this.get("/v1/faculties", "findMany")
-        this.get("/v1/faculty/major", "facultyWithMajor")
-        this.post("/v1/faculty", "create")
-        this.patch("/v1/faculty/:id", "update")
-        this.delete("/v1/faculty/:id", "delete")
     }
 }
 

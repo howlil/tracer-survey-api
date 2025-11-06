@@ -16,38 +16,12 @@ class RolePermissionRoute extends BaseRoute {
     }
 
     createRoute() {
-        this.get(
-            "/v1/permissions",
-            "permissions"
-        )
-
-        this.get(
-            "/v1/roles",
-            "findMany"
-        )
-
-        this.get(
-            "/v1/roles/permission",
-            "rolePermissions"
-        )
-
-        this.post(
-            "/v1/role",
-            "create",
-            this.validation.validateBody(rolePermissionValidation.createSchema())
-        )
-
-        this.patch(
-            "/v1/role/:id",
-            "update",
-            this.validation.validateBody(rolePermissionValidation.updateSchema())
-
-        )
-
-        this.delete(
-            "/v1/role/:id",
-            "delete"
-        )
+        this.get("/v1/roles", "findMany")
+        this.get("/v1/roles/:id", "findUnique")
+        this.get("/v1/roles/resources", "getResources")
+        this.post("/v1/roles", "create", this.validation.validateBody(rolePermissionValidation.createSchema()))
+        this.patch("/v1/roles/:id", "update", this.validation.validateBody(rolePermissionValidation.updateSchema()))
+        this.delete("/v1/roles/:id", "delete")
     }
 }
 

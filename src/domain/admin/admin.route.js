@@ -15,9 +15,10 @@ class AdminRoute extends BaseRoute {
 
     createRoute() {
         this.get("/v1/admins", "findMany")
-        this.post("/v1/admin", "create")
-        this.patch("/v1/admin/:id", "update")
-        this.delete("/v1/admin/:id", "delete")
+        this.get("/v1/admins/:id", "findUnique")
+        this.post("/v1/admins", "create", this.validation.validateBody(require("./admin.validation").createSchema()))
+        this.patch("/v1/admins/:id", "update", this.validation.validateBody(require("./admin.validation").updateSchema()))
+        this.delete("/v1/admins/:id", "delete")
     }
 }
 

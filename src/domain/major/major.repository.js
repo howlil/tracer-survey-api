@@ -5,16 +5,38 @@ class MajorRepository extends BaseRepository {
         super(prisma.major, logger)
     }
 
-    async findMany() {
+    async findManyWithFaculty(options = {}) {
         try {
-            return await this.prisma.findMany({
-                select: {
-                    id: true,
-                    majorName: true,
-                }
+            const { facultyId } = options
+
+            const where = {}
+            if (facultyId) {
+                where.facultyId = facultyId
+            }
+
+            const majors = await this.prisma.findMany({
+                where,
+                include: {
+                    faculty: {
+                        select: {
+                            id: true,
+                            facultyName: true
+                        }
+                    }
+                },
+                orderBy: { majorName: 'asc' }
             })
 
+            return majors.map(major => ({
+                id: major.id,
+                name: major.majorName,
+                faculty: {
+                    id: major.faculty.id,
+                    name: major.faculty.facultyName
+                }
+            }))
         } catch (error) {
+            this.logger.error(error)
             throw error
         }
     }

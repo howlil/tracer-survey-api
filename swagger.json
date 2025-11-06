@@ -1,0 +1,4549 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Tracer Study API",
+    "description": "API Documentation for Tracer Study and User Survey Management System\nUniversitas Andalas\n\nThis API provides endpoints for:\n- Authentication (Admin, Alumni, Manager)\n- Survey Management (Create, Update, Delete, Questions, Rules)\n- Email Management (Templates, Blast Emails)\n- Response Management (Tracer Study, User Survey)\n- Academic Management (Faculty, Major)\n- User Management (Admin, Alumni, Manager)\n- Role & Permission Management\n- FAQ Management\n",
+    "version": "1.0.0",
+    "contact": {
+      "name": "API Support",
+      "email": "support@unand.ac.id"
+    }
+  },
+  "servers": [
+    {
+      "url": "https://piglet-amused-willingly.ngrok-free.app/api",
+      "description": "Development server"
+    }
+
+  ],
+  "tags": [
+    {
+      "name": "Authentication",
+      "description": "Authentication endpoints for Admin, Alumni, and Manager"
+    },
+    {
+      "name": "Survey",
+      "description": "Survey management endpoints"
+    },
+    {
+      "name": "Survey Rules",
+      "description": "Survey rules management endpoints"
+    },
+    {
+      "name": "Survey Questions",
+      "description": "Survey questions management endpoints"
+    },
+    {
+      "name": "Email Templates",
+      "description": "Email template management endpoints"
+    },
+    {
+      "name": "Blast Emails",
+      "description": "Blast email management endpoints"
+    },
+    {
+      "name": "Responses",
+      "description": "Survey response endpoints"
+    },
+    {
+      "name": "Admin",
+      "description": "Admin user management endpoints"
+    },
+    {
+      "name": "Alumni",
+      "description": "Alumni management endpoints"
+    },
+    {
+      "name": "Manager",
+      "description": "Manager management endpoints"
+    },
+    {
+      "name": "Faculty",
+      "description": "Faculty management endpoints"
+    },
+    {
+      "name": "Major",
+      "description": "Major management endpoints"
+    },
+    {
+      "name": "RolePermission",
+      "description": "Role and permission management endpoints"
+    },
+    {
+      "name": "FAQ",
+      "description": "FAQ management endpoints"
+    }
+  ],
+  "paths": {
+    "/": {
+      "get": {
+        "summary": "API Health Check",
+        "description": "Check if API is ready",
+        "tags": [],
+        "responses": {
+          "200": {
+            "description": "API is ready",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "API Ready"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/auth/captcha": {
+      "get": {
+        "summary": "Generate Captcha",
+        "description": "Generate captcha for authentication",
+        "tags": [
+          "Authentication"
+        ],
+        "responses": {
+          "200": {
+            "description": "Captcha generated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CaptchaResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/auth/admin/login": {
+      "post": {
+        "summary": "Admin Login",
+        "description": "Login endpoint for admin users",
+        "tags": [
+          "Authentication"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminLoginRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Login successful",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoginResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      }
+    },
+    "/v1/auth/alumni/login": {
+      "post": {
+        "summary": "Alumni Login",
+        "description": "Login endpoint for alumni users",
+        "tags": [
+          "Authentication"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AlumniLoginRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Login successful",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoginResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      }
+    },
+    "/v1/auth/manager/login": {
+      "post": {
+        "summary": "Manager Login",
+        "description": "Login endpoint for manager users",
+        "tags": [
+          "Authentication"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ManagerLoginRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Login successful",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoginResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      }
+    },
+    "/v1/surveys": {
+      "get": {
+        "summary": "Get All Surveys",
+        "description": "Get paginated list of surveys with filters",
+        "tags": [
+          "Survey"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Page"
+          },
+          {
+            "$ref": "#/components/parameters/Limit"
+          },
+          {
+            "$ref": "#/components/parameters/Search"
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "DRAFT",
+                "PUBLISHED",
+                "ARCHIVED",
+                "CLOSED"
+              ]
+            }
+          },
+          {
+            "name": "targetRole",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "ALUMNI",
+                "MANAGER"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Surveys retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SurveyListResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Create Survey",
+        "description": "Create a new survey with default greetings",
+        "tags": [
+          "Survey"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateSurveyRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Survey created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SurveyResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          }
+        }
+      }
+    },
+    "/v1/surveys/{id}": {
+      "get": {
+        "summary": "Get Survey by ID",
+        "description": "Get detailed survey information including rules and questions",
+        "tags": [
+          "Survey"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/SurveyId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Survey retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SurveyDetailResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      },
+      "patch": {
+        "summary": "Update Survey",
+        "description": "Update survey information or greetings",
+        "tags": [
+          "Survey"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/SurveyId"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateSurveyRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Survey updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SurveyResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete Survey",
+        "description": "Delete a survey (only if no responses exist)",
+        "tags": [
+          "Survey"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/SurveyId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Survey deleted successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "description": "Cannot delete survey with responses"
+          }
+        }
+      }
+    },
+    "/v1/surveys/{surveyId}/rules": {
+      "get": {
+        "summary": "Get Survey Rules",
+        "description": "Get all rules for a survey",
+        "tags": [
+          "Survey Rules"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/SurveyIdPath"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Rules retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/SurveyRule"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Create Survey Rule",
+        "description": "Create a new rule for a survey",
+        "tags": [
+          "Survey Rules"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/SurveyIdPath"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateSurveyRuleRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Rule created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/SurveyRule"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          }
+        }
+      }
+    },
+    "/v1/surveys/{surveyId}/rules/{id}": {
+      "patch": {
+        "summary": "Update Survey Rule",
+        "description": "Update a survey rule",
+        "tags": [
+          "Survey Rules"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/SurveyIdPath"
+          },
+          {
+            "$ref": "#/components/parameters/RuleId"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateSurveyRuleRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Rule updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/SurveyRule"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete Survey Rule",
+        "description": "Delete a survey rule",
+        "tags": [
+          "Survey Rules"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/SurveyIdPath"
+          },
+          {
+            "$ref": "#/components/parameters/RuleId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Rule deleted successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/v1/surveys/{surveyId}/questions": {
+      "get": {
+        "summary": "Get Survey Questions",
+        "description": "Get all questions for a survey, optionally filtered by code",
+        "tags": [
+          "Survey Questions"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/SurveyIdPath"
+          },
+          {
+            "name": "codeId",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Filter by CodeQuestion code"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Questions retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SurveyQuestionsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/surveys/{surveyId}/code-questions": {
+      "post": {
+        "summary": "Create CodeQuestion",
+        "description": "Create a new CodeQuestion with questions",
+        "tags": [
+          "Survey Questions"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/SurveyIdPath"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateCodeQuestionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "CodeQuestion created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CodeQuestionResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "409": {
+            "description": "CodeQuestion code already exists"
+          }
+        }
+      }
+    },
+    "/v1/surveys/{surveyId}/questions/{id}": {
+      "patch": {
+        "summary": "Update Question",
+        "description": "Update a question",
+        "tags": [
+          "Survey Questions"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/SurveyIdPath"
+          },
+          {
+            "$ref": "#/components/parameters/QuestionId"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateQuestionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Question updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuestionResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete Question",
+        "description": "Delete a question",
+        "tags": [
+          "Survey Questions"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/SurveyIdPath"
+          },
+          {
+            "$ref": "#/components/parameters/QuestionId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Question deleted successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/v1/surveys/{surveyId}/questions/reorder": {
+      "patch": {
+        "summary": "Reorder Questions",
+        "description": "Update sort order of questions",
+        "tags": [
+          "Survey Questions"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/SurveyIdPath"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReorderQuestionsRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Questions reordered successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/surveys/{surveyId}/builder/save": {
+      "post": {
+        "summary": "Save Survey Builder",
+        "description": "Save complete survey structure (pages and questions)",
+        "tags": [
+          "Survey Questions"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/SurveyIdPath"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveBuilderRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Survey builder saved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "surveyId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "totalQuestions": {
+                          "type": "integer"
+                        },
+                        "totalPages": {
+                          "type": "integer"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/email-templates": {
+      "get": {
+        "summary": "Get Email Templates",
+        "description": "Get paginated list of email templates",
+        "tags": [
+          "Email Templates"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Page"
+          },
+          {
+            "$ref": "#/components/parameters/Limit"
+          },
+          {
+            "$ref": "#/components/parameters/Search"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Email templates retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EmailTemplateListResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Create Email Template",
+        "description": "Create a new email template",
+        "tags": [
+          "Email Templates"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateEmailTemplateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Email template created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EmailTemplateResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          }
+        }
+      }
+    },
+    "/v1/email-templates/{id}": {
+      "get": {
+        "summary": "Get Email Template by ID",
+        "description": "Get email template details",
+        "tags": [
+          "Email Templates"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/EmailTemplateId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Email template retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EmailTemplateResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      },
+      "patch": {
+        "summary": "Update Email Template",
+        "description": "Update an email template",
+        "tags": [
+          "Email Templates"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/EmailTemplateId"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateEmailTemplateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Email template updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EmailTemplateResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete Email Template",
+        "description": "Delete an email template",
+        "tags": [
+          "Email Templates"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/EmailTemplateId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Email template deleted successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/v1/blast-emails": {
+      "get": {
+        "summary": "Get Blast Emails",
+        "description": "Get paginated list of blast emails",
+        "tags": [
+          "Blast Emails"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Page"
+          },
+          {
+            "$ref": "#/components/parameters/Limit"
+          },
+          {
+            "$ref": "#/components/parameters/Search"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Blast emails retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BlastEmailListResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Create Blast Email",
+        "description": "Create a new blast email",
+        "tags": [
+          "Blast Emails"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateBlastEmailRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Blast email created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BlastEmailResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          }
+        }
+      }
+    },
+    "/v1/blast-emails/{id}": {
+      "get": {
+        "summary": "Get Blast Email by ID",
+        "description": "Get blast email details",
+        "tags": [
+          "Blast Emails"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/BlastEmailId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Blast email retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BlastEmailResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      },
+      "patch": {
+        "summary": "Update Blast Email",
+        "description": "Update a blast email",
+        "tags": [
+          "Blast Emails"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/BlastEmailId"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateBlastEmailRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Blast email updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BlastEmailResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete Blast Email",
+        "description": "Delete a blast email",
+        "tags": [
+          "Blast Emails"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/BlastEmailId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Blast email deleted successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/v1/blast-emails/preview-count": {
+      "post": {
+        "summary": "Preview Recipient Count",
+        "description": "Preview how many recipients will receive the blast email",
+        "tags": [
+          "Blast Emails"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PreviewRecipientCountRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Recipient count retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "count": {
+                          "type": "integer",
+                          "description": "Number of recipients"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/responses/tracer-study": {
+      "get": {
+        "summary": "Get Tracer Study Responses",
+        "description": "Get paginated list of tracer study (alumni) responses",
+        "tags": [
+          "Responses"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Page"
+          },
+          {
+            "$ref": "#/components/parameters/Limit"
+          },
+          {
+            "$ref": "#/components/parameters/Search"
+          },
+          {
+            "name": "facultyId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "majorId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "graduatedYear",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "graduatePeriode",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "WISUDA_I",
+                "WISUDA_II",
+                "WISUDA_III",
+                "WISUDA_IV",
+                "WISUDA_V",
+                "WISUDA_VI"
+              ]
+            }
+          },
+          {
+            "name": "degree",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "S1",
+                "PASCA",
+                "PROFESI",
+                "VOKASI"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Responses retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TracerStudyResponseList"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/responses/tracer-study/{id}": {
+      "get": {
+        "summary": "Get Tracer Study Response Detail",
+        "description": "Get detailed tracer study response with all answers",
+        "tags": [
+          "Responses"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Response detail retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TracerStudyResponseDetail"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/v1/responses/tracer-study/export": {
+      "get": {
+        "summary": "Export Tracer Study Responses",
+        "description": "Export tracer study responses to Excel",
+        "tags": [
+          "Responses"
+        ],
+        "parameters": [
+          {
+            "name": "format",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "excel",
+                "csv"
+              ],
+              "default": "excel"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/Search"
+          },
+          {
+            "name": "facultyId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "majorId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "graduatedYear",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "graduatePeriode",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "WISUDA_I",
+                "WISUDA_II",
+                "WISUDA_III",
+                "WISUDA_IV",
+                "WISUDA_V",
+                "WISUDA_VI"
+              ]
+            }
+          },
+          {
+            "name": "degree",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "S1",
+                "PASCA",
+                "PROFESI",
+                "VOKASI"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Export file generated",
+            "content": {
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/responses/user-survey": {
+      "get": {
+        "summary": "Get User Survey Responses",
+        "description": "Get paginated list of user survey (manager) responses",
+        "tags": [
+          "Responses"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Page"
+          },
+          {
+            "$ref": "#/components/parameters/Limit"
+          },
+          {
+            "$ref": "#/components/parameters/Search"
+          },
+          {
+            "name": "company",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "position",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Responses retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserSurveyResponseList"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/responses/user-survey/{id}": {
+      "get": {
+        "summary": "Get User Survey Response Detail",
+        "description": "Get detailed user survey response with all answers",
+        "tags": [
+          "Responses"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Response detail retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserSurveyResponseDetail"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/v1/responses/user-survey/export": {
+      "get": {
+        "summary": "Export User Survey Responses",
+        "description": "Export user survey responses to Excel",
+        "tags": [
+          "Responses"
+        ],
+        "parameters": [
+          {
+            "name": "format",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "excel",
+                "csv"
+              ],
+              "default": "excel"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/Search"
+          },
+          {
+            "name": "company",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "position",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Export file generated",
+            "content": {
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/admins": {
+      "get": {
+        "summary": "Get All Admins",
+        "description": "Get paginated list of admin users",
+        "tags": [
+          "Admin"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Page"
+          },
+          {
+            "$ref": "#/components/parameters/Limit"
+          },
+          {
+            "$ref": "#/components/parameters/Search"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Admins retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminListResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Create Admin",
+        "description": "Create a new admin user",
+        "tags": [
+          "Admin"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateAdminRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Admin created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          }
+        }
+      }
+    },
+    "/v1/admins/{id}": {
+      "get": {
+        "summary": "Get Admin by ID",
+        "description": "Get admin user details",
+        "tags": [
+          "Admin"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/AdminId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Admin retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      },
+      "patch": {
+        "summary": "Update Admin",
+        "description": "Update an admin user",
+        "tags": [
+          "Admin"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/AdminId"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateAdminRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Admin updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete Admin",
+        "description": "Delete an admin user",
+        "tags": [
+          "Admin"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/AdminId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Admin deleted successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/v1/alumni": {
+      "get": {
+        "summary": "Get All Alumni",
+        "description": "Get paginated list of alumni",
+        "tags": [
+          "Alumni"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Page"
+          },
+          {
+            "$ref": "#/components/parameters/Limit"
+          },
+          {
+            "$ref": "#/components/parameters/Search"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Alumni retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AlumniListResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/managers": {
+      "get": {
+        "summary": "Get All Managers",
+        "description": "Get paginated list of managers",
+        "tags": [
+          "Manager"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Page"
+          },
+          {
+            "$ref": "#/components/parameters/Limit"
+          },
+          {
+            "$ref": "#/components/parameters/Search"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Managers retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManagerListResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/managers/companies": {
+      "get": {
+        "summary": "Get Companies",
+        "description": "Get list of unique companies",
+        "tags": [
+          "Manager"
+        ],
+        "responses": {
+          "200": {
+            "description": "Companies retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/managers/positions": {
+      "get": {
+        "summary": "Get Positions",
+        "description": "Get list of unique positions",
+        "tags": [
+          "Manager"
+        ],
+        "responses": {
+          "200": {
+            "description": "Positions retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/faculties": {
+      "get": {
+        "summary": "Get All Faculties",
+        "description": "Get list of all faculties",
+        "tags": [
+          "Faculty"
+        ],
+        "responses": {
+          "200": {
+            "description": "Faculties retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FacultyListResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/majors": {
+      "get": {
+        "summary": "Get All Majors",
+        "description": "Get list of all majors with faculty information",
+        "tags": [
+          "Major"
+        ],
+        "responses": {
+          "200": {
+            "description": "Majors retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MajorListResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/roles": {
+      "get": {
+        "summary": "Get All Roles",
+        "description": "Get paginated list of roles",
+        "tags": [
+          "RolePermission"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Page"
+          },
+          {
+            "$ref": "#/components/parameters/Limit"
+          },
+          {
+            "$ref": "#/components/parameters/Search"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Roles retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoleListResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Create Role",
+        "description": "Create a new role",
+        "tags": [
+          "RolePermission"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateRoleRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Role created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoleResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          }
+        }
+      }
+    },
+    "/v1/roles/{id}": {
+      "get": {
+        "summary": "Get Role by ID",
+        "description": "Get role details with permissions",
+        "tags": [
+          "RolePermission"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/RoleId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Role retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoleResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      },
+      "patch": {
+        "summary": "Update Role",
+        "description": "Update a role",
+        "tags": [
+          "RolePermission"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/RoleId"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateRoleRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Role updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoleResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete Role",
+        "description": "Delete a role",
+        "tags": [
+          "RolePermission"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/RoleId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Role deleted successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/v1/roles/resources": {
+      "get": {
+        "summary": "Get Resources",
+        "description": "Get list of available resources for permissions",
+        "tags": [
+          "RolePermission"
+        ],
+        "responses": {
+          "200": {
+            "description": "Resources retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/faqs": {
+      "get": {
+        "summary": "Get All FAQs",
+        "description": "Get list of all FAQs",
+        "tags": [
+          "FAQ"
+        ],
+        "responses": {
+          "200": {
+            "description": "FAQs retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FAQListResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/faq": {
+      "post": {
+        "summary": "Create FAQ",
+        "description": "Create a new FAQ",
+        "tags": [
+          "FAQ"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateFAQRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "FAQ created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FAQResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          }
+        }
+      }
+    },
+    "/v1/faq/{id}": {
+      "patch": {
+        "summary": "Update FAQ",
+        "description": "Update an FAQ",
+        "tags": [
+          "FAQ"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/FAQId"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateFAQRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "FAQ updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FAQResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete FAQ",
+        "description": "Delete an FAQ",
+        "tags": [
+          "FAQ"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/FAQId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "FAQ deleted successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "parameters": {
+      "Page": {
+        "name": "page",
+        "in": "query",
+        "schema": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 1
+        },
+        "description": "Page number"
+      },
+      "Limit": {
+        "name": "limit",
+        "in": "query",
+        "schema": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100,
+          "default": 10
+        },
+        "description": "Items per page"
+      },
+      "Search": {
+        "name": "search",
+        "in": "query",
+        "schema": {
+          "type": "string"
+        },
+        "description": "Search query"
+      },
+      "SurveyId": {
+        "name": "id",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "description": "Survey ID"
+      },
+      "SurveyIdPath": {
+        "name": "surveyId",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "description": "Survey ID"
+      },
+      "RuleId": {
+        "name": "id",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "description": "Rule ID"
+      },
+      "QuestionId": {
+        "name": "id",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "description": "Question ID"
+      },
+      "EmailTemplateId": {
+        "name": "id",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "description": "Email Template ID"
+      },
+      "BlastEmailId": {
+        "name": "id",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "description": "Blast Email ID"
+      },
+      "AdminId": {
+        "name": "id",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "description": "Admin ID"
+      },
+      "RoleId": {
+        "name": "id",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "description": "Role ID"
+      },
+      "FAQId": {
+        "name": "id",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "description": "FAQ ID"
+      }
+    },
+    "schemas": {
+      "SuccessResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": true
+          },
+          "message": {
+            "type": "string",
+            "example": "Operation successful"
+          }
+        }
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": false
+          },
+          "message": {
+            "type": "string",
+            "example": "Error message"
+          },
+          "errors": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      "PaginationMeta": {
+        "type": "object",
+        "properties": {
+          "total": {
+            "type": "integer"
+          },
+          "limit": {
+            "type": "integer"
+          },
+          "page": {
+            "type": "integer"
+          },
+          "totalPages": {
+            "type": "integer"
+          }
+        }
+      },
+      "CaptchaResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "captcha": {
+                "type": "string"
+              },
+              "image": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      "AdminLoginRequest": {
+        "type": "object",
+        "required": [
+          "username",
+          "password",
+          "captcha",
+          "captchaId"
+        ],
+        "properties": {
+          "username": {
+            "type": "string",
+            "example": "admin"
+          },
+          "password": {
+            "type": "string",
+            "format": "password",
+            "example": "password123"
+          },
+          "captcha": {
+            "type": "string",
+            "example": "ABC123"
+          },
+          "captchaId": {
+            "type": "string",
+            "example": "captcha-id-123"
+          }
+        }
+      },
+      "AlumniLoginRequest": {
+        "type": "object",
+        "required": [
+          "nim",
+          "pin"
+        ],
+        "properties": {
+          "nim": {
+            "type": "string",
+            "example": 1234567890
+          },
+          "pin": {
+            "type": "string",
+            "example": 123456
+          }
+        }
+      },
+      "ManagerLoginRequest": {
+        "type": "object",
+        "required": [
+          "email",
+          "pin"
+        ],
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "example": "manager@company.com"
+          },
+          "pin": {
+            "type": "string",
+            "example": 123456
+          }
+        }
+      },
+      "LoginResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "token": {
+                "type": "string"
+              },
+              "user": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      },
+      "CreateSurveyRequest": {
+        "type": "object",
+        "required": [
+          "name",
+          "type",
+          "description"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 5,
+            "maxLength": 200,
+            "example": "Tracer Study Lulusan 2023"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "TRACER_STUDY",
+              "USER_SURVEY"
+            ],
+            "example": "TRACER_STUDY"
+          },
+          "description": {
+            "type": "string",
+            "minLength": 10,
+            "maxLength": 1000,
+            "example": "Survey untuk mengumpulkan data lulusan tahun 2023"
+          }
+        }
+      },
+      "UpdateSurveyRequest": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 5,
+            "maxLength": 200
+          },
+          "targetRole": {
+            "type": "string",
+            "enum": [
+              "ALUMNI",
+              "MANAGER"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "DRAFT",
+              "PUBLISHED",
+              "ARCHIVED",
+              "CLOSED"
+            ]
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 1000
+          },
+          "documentUrl": {
+            "type": "string",
+            "format": "uri"
+          },
+          "greatingOpening": {
+            "$ref": "#/components/schemas/GreetingOpening"
+          },
+          "greetingClosing": {
+            "$ref": "#/components/schemas/GreetingClosing"
+          }
+        }
+      },
+      "GreetingOpening": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "minLength": 5,
+            "maxLength": 200
+          },
+          "greeting": {
+            "type": "object",
+            "properties": {
+              "islamic": {
+                "type": "string",
+                "minLength": 5,
+                "maxLength": 200
+              },
+              "general": {
+                "type": "string",
+                "minLength": 5,
+                "maxLength": 200
+              }
+            }
+          },
+          "addressee": {
+            "type": "string",
+            "minLength": 10,
+            "maxLength": 500
+          },
+          "introduction": {
+            "type": "string",
+            "minLength": 20,
+            "maxLength": 2000
+          },
+          "ikuList": {
+            "type": "object",
+            "properties": {
+              "title": {
+                "type": "string",
+                "minLength": 5,
+                "maxLength": 200
+              },
+              "items": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 5,
+                  "maxLength": 200
+                }
+              }
+            }
+          },
+          "purpose": {
+            "type": "string",
+            "minLength": 20,
+            "maxLength": 2000
+          },
+          "expectation": {
+            "type": "string",
+            "minLength": 20,
+            "maxLength": 2000
+          },
+          "signOff": {
+            "type": "object",
+            "properties": {
+              "department": {
+                "type": "string",
+                "minLength": 5,
+                "maxLength": 200
+              },
+              "university": {
+                "type": "string",
+                "minLength": 5,
+                "maxLength": 200
+              }
+            }
+          }
+        }
+      },
+      "GreetingClosing": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "minLength": 5,
+            "maxLength": 200
+          },
+          "greeting": {
+            "type": "object",
+            "properties": {
+              "islamic": {
+                "type": "string",
+                "minLength": 5,
+                "maxLength": 200
+              },
+              "general": {
+                "type": "string",
+                "minLength": 5,
+                "maxLength": 200
+              }
+            }
+          },
+          "addressee": {
+            "type": "string",
+            "minLength": 10,
+            "maxLength": 500
+          },
+          "introduction": {
+            "type": "string",
+            "minLength": 20,
+            "maxLength": 2000
+          },
+          "expectation": {
+            "type": "string",
+            "minLength": 20,
+            "maxLength": 2000
+          },
+          "signOff": {
+            "type": "object",
+            "properties": {
+              "department": {
+                "type": "string",
+                "minLength": 5,
+                "maxLength": 200
+              },
+              "university": {
+                "type": "string",
+                "minLength": 5,
+                "maxLength": 200
+              }
+            }
+          },
+          "contact": {
+            "type": "object",
+            "properties": {
+              "phone": {
+                "type": "string",
+                "maxLength": 50
+              },
+              "email": {
+                "type": "string",
+                "format": "email"
+              },
+              "website": {
+                "type": "string",
+                "format": "uri"
+              }
+            }
+          }
+        }
+      },
+      "Survey": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "targetRole": {
+            "type": "string",
+            "enum": [
+              "ALUMNI",
+              "MANAGER"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "DRAFT",
+              "PUBLISHED",
+              "ARCHIVED",
+              "CLOSED"
+            ]
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "documentUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "greatingOpening": {
+            "type": "object"
+          },
+          "greetingClosing": {
+            "type": "object"
+          },
+          "questionCount": {
+            "type": "integer"
+          },
+          "responseCount": {
+            "type": "integer"
+          },
+          "surveyRulesCount": {
+            "type": "integer"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "SurveyListResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "surveys": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/Survey"
+                }
+              },
+              "meta": {
+                "$ref": "#/components/schemas/PaginationMeta"
+              }
+            }
+          }
+        }
+      },
+      "SurveyResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/Survey"
+          }
+        }
+      },
+      "SurveyDetailResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Survey"
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "surveyRules": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/components/schemas/SurveyRule"
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "SurveyRule": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "surveyId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "facultyId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "majorId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "degree": {
+            "type": "string",
+            "enum": [
+              "S1",
+              "PASCA",
+              "PROFESI",
+              "VOKASI"
+            ]
+          },
+          "major": {
+            "$ref": "#/components/schemas/Major",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "CreateSurveyRuleRequest": {
+        "type": "object",
+        "required": [
+          "facultyId",
+          "degree"
+        ],
+        "properties": {
+          "facultyId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "majorId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "degree": {
+            "type": "string",
+            "enum": [
+              "S1",
+              "PASCA",
+              "PROFESI",
+              "VOKASI"
+            ]
+          }
+        }
+      },
+      "UpdateSurveyRuleRequest": {
+        "type": "object",
+        "properties": {
+          "facultyId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "majorId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "degree": {
+            "type": "string",
+            "enum": [
+              "S1",
+              "PASCA",
+              "PROFESI",
+              "VOKASI"
+            ]
+          }
+        }
+      },
+      "SurveyQuestionsResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "codeQuestions": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/CodeQuestion"
+                }
+              },
+              "pages": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/Page"
+                }
+              }
+            }
+          }
+        }
+      },
+      "CodeQuestion": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "pattern": "^[A-Z0-9_]+$"
+          },
+          "questions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Question"
+            }
+          }
+        }
+      },
+      "Question": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "parentId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "codeId": {
+            "type": "string"
+          },
+          "groupQuestionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "questionText": {
+            "type": "string"
+          },
+          "questionType": {
+            "type": "string",
+            "enum": [
+              "ESSAY",
+              "LONG_TEST",
+              "SINGLE_CHOICE",
+              "MULTIPLE_CHOICE",
+              "MATRIX_SINGLE_CHOICE",
+              "COMBO_BOX"
+            ]
+          },
+          "isRequired": {
+            "type": "boolean"
+          },
+          "sortOrder": {
+            "type": "integer"
+          },
+          "placeholder": {
+            "type": "string"
+          },
+          "searchplaceholder": {
+            "type": "string"
+          },
+          "answerQuestion": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AnswerOption"
+            }
+          },
+          "children": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Question"
+            }
+          }
+        }
+      },
+      "AnswerOption": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "answerText": {
+            "type": "string"
+          },
+          "sortOrder": {
+            "type": "integer"
+          },
+          "otherOptionPlaceholder": {
+            "type": "string",
+            "nullable": true
+          },
+          "isTriggered": {
+            "type": "boolean"
+          }
+        }
+      },
+      "QuestionResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/Question"
+          }
+        }
+      },
+      "CreateCodeQuestionRequest": {
+        "type": "object",
+        "required": [
+          "code",
+          "questions"
+        ],
+        "properties": {
+          "code": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 50,
+            "pattern": "^[A-Z0-9_]+$"
+          },
+          "questions": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "$ref": "#/components/schemas/CreateQuestionRequest"
+            }
+          }
+        }
+      },
+      "CreateQuestionRequest": {
+        "type": "object",
+        "required": [
+          "groupQuestionId",
+          "questionText",
+          "questionType",
+          "sortOrder"
+        ],
+        "properties": {
+          "parentId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "groupQuestionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "questionText": {
+            "type": "string",
+            "minLength": 5,
+            "maxLength": 500
+          },
+          "questionType": {
+            "type": "string",
+            "enum": [
+              "ESSAY",
+              "LONG_TEST",
+              "SINGLE_CHOICE",
+              "MULTIPLE_CHOICE",
+              "MATRIX_SINGLE_CHOICE",
+              "COMBO_BOX"
+            ]
+          },
+          "isRequired": {
+            "type": "boolean",
+            "default": false
+          },
+          "sortOrder": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "placeholder": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "searchplaceholder": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "answerQuestion": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CreateAnswerOptionRequest"
+            }
+          }
+        }
+      },
+      "CreateAnswerOptionRequest": {
+        "type": "object",
+        "required": [
+          "answerText",
+          "sortOrder"
+        ],
+        "properties": {
+          "answerText": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "sortOrder": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "otherOptionPlaceholder": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "isTriggered": {
+            "type": "boolean",
+            "default": false
+          }
+        }
+      },
+      "UpdateQuestionRequest": {
+        "type": "object",
+        "properties": {
+          "questionText": {
+            "type": "string",
+            "minLength": 5,
+            "maxLength": 500
+          },
+          "questionType": {
+            "type": "string",
+            "enum": [
+              "ESSAY",
+              "LONG_TEST",
+              "SINGLE_CHOICE",
+              "MULTIPLE_CHOICE",
+              "MATRIX_SINGLE_CHOICE",
+              "COMBO_BOX"
+            ]
+          },
+          "isRequired": {
+            "type": "boolean"
+          },
+          "sortOrder": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "placeholder": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "searchplaceholder": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "parentId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "groupQuestionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "answerQuestion": {
+            "type": "array",
+            "items": {
+              "allOf": [
+                {
+                  "$ref": "#/components/schemas/CreateAnswerOptionRequest"
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid"
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        }
+      },
+      "ReorderQuestionsRequest": {
+        "type": "object",
+        "required": [
+          "questionOrders"
+        ],
+        "properties": {
+          "questionOrders": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "required": [
+                "questionId",
+                "sortOrder"
+              ],
+              "properties": {
+                "questionId": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "sortOrder": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              }
+            }
+          }
+        }
+      },
+      "SaveBuilderRequest": {
+        "type": "object",
+        "required": [
+          "questions"
+        ],
+        "properties": {
+          "pages": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Page"
+            }
+          },
+          "questions": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "allOf": [
+                {
+                  "$ref": "#/components/schemas/CreateQuestionRequest"
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "codeId": {
+                      "type": "string"
+                    },
+                    "version": {
+                      "type": "string"
+                    },
+                    "questionCode": {
+                      "type": "string"
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        }
+      },
+      "Page": {
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "codeIds"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 500
+          },
+          "codeIds": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "CodeQuestionResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "surveyId": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "questions": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/Question"
+                }
+              }
+            }
+          }
+        }
+      },
+      "CreateEmailTemplateRequest": {
+        "type": "object",
+        "required": [
+          "code",
+          "templateName",
+          "subject",
+          "bodyText",
+          "bodyHtml"
+        ],
+        "properties": {
+          "code": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 50,
+            "pattern": "^[A-Z_]+$"
+          },
+          "templateName": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 100
+          },
+          "subject": {
+            "type": "string",
+            "minLength": 5,
+            "maxLength": 200
+          },
+          "bodyText": {
+            "type": "string",
+            "minLength": 10
+          },
+          "bodyHtml": {
+            "type": "string",
+            "minLength": 10
+          }
+        }
+      },
+      "UpdateEmailTemplateRequest": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 50,
+            "pattern": "^[A-Z_]+$"
+          },
+          "templateName": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 100
+          },
+          "subject": {
+            "type": "string",
+            "minLength": 5,
+            "maxLength": 200
+          },
+          "bodyText": {
+            "type": "string",
+            "minLength": 10
+          },
+          "bodyHtml": {
+            "type": "string",
+            "minLength": 10
+          }
+        }
+      },
+      "EmailTemplate": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "code": {
+            "type": "string"
+          },
+          "templateName": {
+            "type": "string"
+          },
+          "subject": {
+            "type": "string"
+          },
+          "bodyText": {
+            "type": "string"
+          },
+          "bodyHtml": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "EmailTemplateListResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EmailTemplate"
+            }
+          },
+          "meta": {
+            "$ref": "#/components/schemas/PaginationMeta"
+          }
+        }
+      },
+      "EmailTemplateResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/EmailTemplate"
+          }
+        }
+      },
+      "CreateBlastEmailRequest": {
+        "type": "object",
+        "required": [
+          "surveyId",
+          "emailTemplateId",
+          "emailType",
+          "title",
+          "dateToSend",
+          "recipientType"
+        ],
+        "properties": {
+          "surveyId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "emailTemplateId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "emailType": {
+            "type": "string",
+            "enum": [
+              "INVITATION",
+              "REMINDER",
+              "CUSTOM"
+            ]
+          },
+          "title": {
+            "type": "string",
+            "minLength": 5,
+            "maxLength": 200
+          },
+          "dateToSend": {
+            "type": "string",
+            "format": "date"
+          },
+          "recipientType": {
+            "type": "string",
+            "enum": [
+              "ALUMNI",
+              "MANAGER",
+              "ALL",
+              "CUSTOM"
+            ]
+          },
+          "recipientFilters": {
+            "$ref": "#/components/schemas/RecipientFilters"
+          },
+          "message": {
+            "type": "string",
+            "maxLength": 1000,
+            "nullable": true
+          }
+        }
+      },
+      "UpdateBlastEmailRequest": {
+        "type": "object",
+        "properties": {
+          "surveyId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "emailTemplateId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "emailType": {
+            "type": "string",
+            "enum": [
+              "INVITATION",
+              "REMINDER",
+              "CUSTOM"
+            ]
+          },
+          "title": {
+            "type": "string",
+            "minLength": 5,
+            "maxLength": 200
+          },
+          "dateToSend": {
+            "type": "string",
+            "format": "date"
+          },
+          "recipientType": {
+            "type": "string",
+            "enum": [
+              "ALUMNI",
+              "MANAGER",
+              "ALL",
+              "CUSTOM"
+            ]
+          },
+          "recipientFilters": {
+            "$ref": "#/components/schemas/RecipientFilters"
+          },
+          "message": {
+            "type": "string",
+            "maxLength": 1000,
+            "nullable": true
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "SCHEDULED",
+              "PENDING",
+              "SENT",
+              "FAILED"
+            ]
+          }
+        }
+      },
+      "RecipientFilters": {
+        "type": "object",
+        "properties": {
+          "facultyId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "majorId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "graduatedYear": {
+            "type": "integer",
+            "nullable": true
+          },
+          "graduatePeriode": {
+            "type": "string",
+            "enum": [
+              "WISUDA_I",
+              "WISUDA_II",
+              "WISUDA_III",
+              "WISUDA_IV",
+              "WISUDA_V",
+              "WISUDA_VI"
+            ],
+            "nullable": true
+          },
+          "customRecipients": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "email"
+            },
+            "nullable": true
+          }
+        }
+      },
+      "PreviewRecipientCountRequest": {
+        "type": "object",
+        "required": [
+          "surveyId",
+          "recipientType"
+        ],
+        "properties": {
+          "surveyId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "recipientType": {
+            "type": "string",
+            "enum": [
+              "ALUMNI",
+              "MANAGER",
+              "ALL",
+              "CUSTOM"
+            ]
+          },
+          "recipientFilters": {
+            "$ref": "#/components/schemas/RecipientFilters"
+          }
+        }
+      },
+      "BlastEmail": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "surveyId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "emailTemplateId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "emailType": {
+            "type": "string",
+            "enum": [
+              "INVITATION",
+              "REMINDER",
+              "CUSTOM"
+            ]
+          },
+          "title": {
+            "type": "string"
+          },
+          "dateToSend": {
+            "type": "string",
+            "format": "date"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "SCHEDULED",
+              "PENDING",
+              "SENT",
+              "FAILED"
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "BlastEmailListResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BlastEmail"
+            }
+          },
+          "meta": {
+            "$ref": "#/components/schemas/PaginationMeta"
+          }
+        }
+      },
+      "BlastEmailResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/BlastEmail"
+          }
+        }
+      },
+      "TracerStudyResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "respondentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "fullName": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
+          "nim": {
+            "type": "string",
+            "nullable": true
+          },
+          "graduatedYear": {
+            "type": "integer",
+            "nullable": true
+          },
+          "graduatePeriode": {
+            "type": "string",
+            "enum": [
+              "WISUDA_I",
+              "WISUDA_II",
+              "WISUDA_III",
+              "WISUDA_IV",
+              "WISUDA_V",
+              "WISUDA_VI"
+            ],
+            "nullable": true
+          },
+          "major": {
+            "$ref": "#/components/schemas/Major",
+            "nullable": true
+          },
+          "degree": {
+            "type": "string",
+            "enum": [
+              "S1",
+              "PASCA",
+              "PROFESI",
+              "VOKASI"
+            ],
+            "nullable": true
+          },
+          "submittedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "totalQuestions": {
+            "type": "integer"
+          },
+          "answeredQuestions": {
+            "type": "integer"
+          },
+          "completionPercentage": {
+            "type": "integer"
+          }
+        }
+      },
+      "TracerStudyResponseList": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "responses": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/TracerStudyResponse"
+                }
+              },
+              "meta": {
+                "$ref": "#/components/schemas/PaginationMeta"
+              },
+              "stats": {
+                "type": "object",
+                "properties": {
+                  "totalAlumni": {
+                    "type": "integer"
+                  },
+                  "submittedCount": {
+                    "type": "integer"
+                  },
+                  "notSubmittedCount": {
+                    "type": "integer"
+                  },
+                  "averageCompletionPercentage": {
+                    "type": "integer"
+                  },
+                  "filteredCount": {
+                    "type": "integer"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "TracerStudyResponseDetail": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/TracerStudyResponse"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "responses": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/QuestionResponse"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "UserSurveyResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "respondentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "fullName": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
+          "company": {
+            "type": "string",
+            "nullable": true
+          },
+          "position": {
+            "type": "string",
+            "nullable": true
+          },
+          "submittedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "totalQuestions": {
+            "type": "integer"
+          },
+          "answeredQuestions": {
+            "type": "integer"
+          },
+          "completionPercentage": {
+            "type": "integer"
+          }
+        }
+      },
+      "UserSurveyResponseList": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "responses": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/UserSurveyResponse"
+                }
+              },
+              "meta": {
+                "$ref": "#/components/schemas/PaginationMeta"
+              },
+              "stats": {
+                "type": "object",
+                "properties": {
+                  "totalManagers": {
+                    "type": "integer"
+                  },
+                  "submittedCount": {
+                    "type": "integer"
+                  },
+                  "notSubmittedCount": {
+                    "type": "integer"
+                  },
+                  "averageCompletionPercentage": {
+                    "type": "integer"
+                  },
+                  "filteredCount": {
+                    "type": "integer"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "UserSurveyResponseDetail": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/UserSurveyResponse"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "responses": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/QuestionResponse"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "CreateAdminRequest": {
+        "type": "object",
+        "required": [
+          "username",
+          "password",
+          "name",
+          "email"
+        ],
+        "properties": {
+          "username": {
+            "type": "string"
+          },
+          "password": {
+            "type": "string",
+            "format": "password"
+          },
+          "name": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
+          "isActive": {
+            "type": "boolean",
+            "default": true
+          }
+        }
+      },
+      "UpdateAdminRequest": {
+        "type": "object",
+        "properties": {
+          "username": {
+            "type": "string"
+          },
+          "password": {
+            "type": "string",
+            "format": "password"
+          },
+          "name": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
+          "isActive": {
+            "type": "boolean"
+          }
+        }
+      },
+      "Admin": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "username": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
+          "isActive": {
+            "type": "boolean"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "AdminListResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Admin"
+            }
+          },
+          "meta": {
+            "$ref": "#/components/schemas/PaginationMeta"
+          }
+        }
+      },
+      "AdminResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/Admin"
+          }
+        }
+      },
+      "Alumni": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nim": {
+            "type": "string"
+          },
+          "graduatedYear": {
+            "type": "integer"
+          },
+          "graduatePeriode": {
+            "type": "string",
+            "enum": [
+              "WISUDA_I",
+              "WISUDA_II",
+              "WISUDA_III",
+              "WISUDA_IV",
+              "WISUDA_V",
+              "WISUDA_VI"
+            ]
+          },
+          "major": {
+            "$ref": "#/components/schemas/Major"
+          },
+          "degree": {
+            "type": "string",
+            "enum": [
+              "S1",
+              "PASCA",
+              "PROFESI",
+              "VOKASI"
+            ]
+          },
+          "respondent": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "fullName": {
+                "type": "string"
+              },
+              "email": {
+                "type": "string",
+                "format": "email"
+              }
+            }
+          }
+        }
+      },
+      "AlumniListResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Alumni"
+            }
+          },
+          "meta": {
+            "$ref": "#/components/schemas/PaginationMeta"
+          }
+        }
+      },
+      "Manager": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "company": {
+            "type": "string"
+          },
+          "position": {
+            "type": "string"
+          },
+          "respondent": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "fullName": {
+                "type": "string"
+              },
+              "email": {
+                "type": "string",
+                "format": "email"
+              }
+            }
+          }
+        }
+      },
+      "ManagerListResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Manager"
+            }
+          },
+          "meta": {
+            "$ref": "#/components/schemas/PaginationMeta"
+          }
+        }
+      },
+      "Faculty": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "facultyName": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "FacultyListResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Faculty"
+            }
+          }
+        }
+      },
+      "Major": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "majorName": {
+            "type": "string"
+          },
+          "degree": {
+            "type": "string",
+            "enum": [
+              "S1",
+              "S2",
+              "S3",
+              "VOKASI",
+              "PROFESI"
+            ]
+          },
+          "faculty": {
+            "$ref": "#/components/schemas/Faculty"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "MajorListResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Major"
+            }
+          }
+        }
+      },
+      "CreateRoleRequest": {
+        "type": "object",
+        "required": [
+          "roleName"
+        ],
+        "properties": {
+          "roleName": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "permissions": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        }
+      },
+      "UpdateRoleRequest": {
+        "type": "object",
+        "properties": {
+          "roleName": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "permissions": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        }
+      },
+      "Role": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "roleName": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "permissions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Permission"
+            }
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "Permission": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "permissionName": {
+            "type": "string"
+          },
+          "resource": {
+            "type": "string",
+            "nullable": true
+          },
+          "action": {
+            "type": "string",
+            "nullable": true
+          }
+        }
+      },
+      "RoleListResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Role"
+            }
+          },
+          "meta": {
+            "$ref": "#/components/schemas/PaginationMeta"
+          }
+        }
+      },
+      "RoleResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/Role"
+          }
+        }
+      },
+      "CreateFAQRequest": {
+        "type": "object",
+        "required": [
+          "title",
+          "link"
+        ],
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "link": {
+            "type": "string",
+            "format": "uri"
+          }
+        }
+      },
+      "UpdateFAQRequest": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "link": {
+            "type": "string",
+            "format": "uri"
+          }
+        }
+      },
+      "FAQ": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          },
+          "link": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "FAQListResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FAQ"
+            }
+          }
+        }
+      },
+      "FAQResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/FAQ"
+          }
+        }
+      }
+    },
+    "responses": {
+      "BadRequest": {
+        "description": "Bad request - validation error",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            }
+          }
+        }
+      },
+      "Unauthorized": {
+        "description": "Unauthorized - invalid credentials",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            }
+          }
+        }
+      },
+      "NotFound": {
+        "description": "Resource not found",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            }
+          }
+        }
+      },
+      "InternalServerError": {
+        "description": "Internal server error",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            }
+          }
+        }
+      }
+    },
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "JWT token obtained from login endpoints"
+      }
+    }
+  }
+}

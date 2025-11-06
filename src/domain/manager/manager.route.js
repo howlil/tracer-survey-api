@@ -15,10 +15,8 @@ class ManagerRoute extends BaseRoute {
 
     createRoute() {
         this.get("/v1/managers", "findMany")
-        this.get("/v1/manager/:id", "findUnique")
-        this.post("/v1/manager", "create")
-        this.patch("/v1/manager/:id", "update")
-        this.delete("/v1/manager/:id", "delete")
+        this.get("/v1/managers/companies", "getCompanies")
+        this.get("/v1/managers/positions", "getPositions")
     }
 }
 
