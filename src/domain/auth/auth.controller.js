@@ -24,22 +24,16 @@ class AuthController extends BaseController {
 
     async alumniLogin(req, res, next) {
         try {
-            const { pin, captcha, captchaId } = req.extract.getBody()
+            const { pin, recaptchaToken } = req.extract.getBody()
+            const remoteIp = req.ip || req.connection.remoteAddress || null
 
-            // Validate captcha
-            if (!captchaId || !captcha) {
-                return res.status(400).json({
-                    status: 400,
-                    message: 'Captcha ID dan jawaban wajib diisi'
-                })
-            }
-
-            const isValidCaptcha = CaptchaUtil.validateCaptcha(captchaId, captcha)
+            // Validate Google reCAPTCHA
+            const isValidCaptcha = await CaptchaUtil.validateRecaptcha(recaptchaToken, remoteIp)
 
             if (!isValidCaptcha) {
                 return res.status(400).json({
                     status: 400,
-                    message: 'Captcha tidak valid atau sudah kadaluarsa'
+                    message: 'reCAPTCHA tidak valid atau sudah kadaluarsa'
                 })
             }
 
@@ -54,22 +48,16 @@ class AuthController extends BaseController {
 
     async managerLogin(req, res, next) {
         try {
-            const { pin, captcha, captchaId } = req.extract.getBody()
+            const { pin, recaptchaToken } = req.extract.getBody()
+            const remoteIp = req.ip || req.connection.remoteAddress || null
 
-            // Validate captcha
-            if (!captchaId || !captcha) {
-                return res.status(400).json({
-                    status: 400,
-                    message: 'Captcha ID dan jawaban wajib diisi'
-                })
-            }
-
-            const isValidCaptcha = CaptchaUtil.validateCaptcha(captchaId, captcha)
+            // Validate Google reCAPTCHA
+            const isValidCaptcha = await CaptchaUtil.validateRecaptcha(recaptchaToken, remoteIp)
 
             if (!isValidCaptcha) {
                 return res.status(400).json({
                     status: 400,
-                    message: 'Captcha tidak valid atau sudah kadaluarsa'
+                    message: 'reCAPTCHA tidak valid atau sudah kadaluarsa'
                 })
             }
 
@@ -82,26 +70,6 @@ class AuthController extends BaseController {
         }
     }
 
-    /**
-     * Generate captcha untuk frontend
-     */
-    async generateCaptcha(req, res, next) {
-        try {
-            const { type = 'math' } = req.extract.getQuery(['type'])
-
-            let captcha
-            if (type === 'text') {
-                captcha = CaptchaUtil.generateTextCaptcha()
-            } else {
-                captcha = CaptchaUtil.generateMathCaptcha()
-            }
-
-            return ResponseFactory.get(captcha).send(res)
-        } catch (error) {
-            this.logger.error('Error in generateCaptcha controller:', error)
-            next(error)
-        }
-    }
 }
 
 module.exports = AuthController

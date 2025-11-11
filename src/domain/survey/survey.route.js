@@ -1,6 +1,7 @@
 const BaseRoute = require("../../shared/base/base.route")
 const surveyController = require("./survey.controller")
 const surveyValidation = require("./survey.validation")
+const PermissionMiddleware = require("../../shared/middlewares/permission.middleware")
 
 class SurveyRoute extends BaseRoute {
     constructor() {
@@ -15,26 +16,118 @@ class SurveyRoute extends BaseRoute {
     }
 
     createRoute() {
-        // Survey Management
-        this.get("/v1/surveys", "getSurveys")
-        this.get("/v1/surveys/:id", "getSurveyById")
-        this.post("/v1/surveys", "createSurvey", this.validation.validateBody(surveyValidation.createSchema()))
-        this.patch("/v1/surveys/:id", "updateSurvey", this.validation.validateBody(surveyValidation.updateSchema()))
-        this.delete("/v1/surveys/:id", "deleteSurvey")
+        this.get(
+            "/v1/surveys",
+            "getSurveys",
+            PermissionMiddleware.authenticate,
+            PermissionMiddleware.requirePermission('survey.read')
+        )
 
-        // Survey Rules Management
-        this.get("/v1/surveys/:surveyId/rules", "getSurveyRules")
-        this.post("/v1/surveys/:surveyId/rules", "createSurveyRule", this.validation.validateBody(surveyValidation.createRuleSchema()))
-        this.patch("/v1/surveys/:surveyId/rules/:id", "updateSurveyRule", this.validation.validateBody(surveyValidation.updateRuleSchema()))
-        this.delete("/v1/surveys/:surveyId/rules/:id", "deleteSurveyRule")
+        this.get(
+            "/v1/surveys/:id",
+            "getSurveyById",
+            PermissionMiddleware.authenticate,
+            PermissionMiddleware.requirePermission('survey.read')
+        )
 
-        // Survey Questions Management
-        this.get("/v1/surveys/:surveyId/questions", "getSurveyQuestions")
-        this.post("/v1/surveys/:surveyId/code-questions", "createCodeQuestion", this.validation.validateBody(surveyValidation.createCodeQuestionSchema()))
-        this.patch("/v1/surveys/:surveyId/questions/:id", "updateQuestion", this.validation.validateBody(surveyValidation.updateQuestionSchema()))
-        this.delete("/v1/surveys/:surveyId/questions/:id", "deleteQuestion")
-        this.patch("/v1/surveys/:surveyId/questions/reorder", "reorderQuestions", this.validation.validateBody(surveyValidation.reorderQuestionsSchema()))
-        this.post("/v1/surveys/:surveyId/builder/save", "saveBuilder", this.validation.validateBody(surveyValidation.saveBuilderSchema()))
+        this.post(
+            "/v1/surveys",
+            "createSurvey",
+            PermissionMiddleware.authenticate,
+            PermissionMiddleware.requirePermission('survey.create'),
+            this.validation.validateBody(surveyValidation.createSchema())
+        )
+
+        this.patch(
+            "/v1/surveys/:id",
+            "updateSurvey",
+            PermissionMiddleware.authenticate,
+            PermissionMiddleware.requirePermission('survey.update'),
+            this.validation.validateBody(surveyValidation.updateSchema())
+        )
+
+        this.delete(
+            "/v1/surveys/:id",
+            "deleteSurvey",
+            PermissionMiddleware.authenticate,
+            PermissionMiddleware.requirePermission('survey.delete')
+        )
+
+        this.get(
+            "/v1/surveys/:surveyId/rules",
+            "getSurveyRules",
+            PermissionMiddleware.authenticate,
+            PermissionMiddleware.requirePermission('survey.read')
+        )
+
+        this.post(
+            "/v1/surveys/:surveyId/rules",
+            "createSurveyRule",
+            PermissionMiddleware.authenticate,
+            PermissionMiddleware.requirePermission('survey.update'),
+            this.validation.validateBody(surveyValidation.createRuleSchema())
+        )
+
+        this.patch(
+            "/v1/surveys/:surveyId/rules/:id",
+            "updateSurveyRule",
+            PermissionMiddleware.authenticate,
+            PermissionMiddleware.requirePermission('survey.update'),
+            this.validation.validateBody(surveyValidation.updateRuleSchema())
+        )
+
+        this.delete(
+            "/v1/surveys/:surveyId/rules/:id",
+            "deleteSurveyRule",
+            PermissionMiddleware.authenticate,
+            PermissionMiddleware.requirePermission('survey.update')
+        )
+
+        this.get(
+            "/v1/surveys/:surveyId/questions",
+            "getSurveyQuestions",
+            PermissionMiddleware.authenticate,
+            PermissionMiddleware.requireAnyPermission('survey.read', 'question.read')
+        )
+
+        this.post(
+            "/v1/surveys/:surveyId/code-questions",
+            "createCodeQuestion",
+            PermissionMiddleware.authenticate,
+            PermissionMiddleware.requirePermission('question.create'),
+            this.validation.validateBody(surveyValidation.createCodeQuestionSchema())
+        )
+
+        this.patch(
+            "/v1/surveys/:surveyId/questions/:id",
+            "updateQuestion",
+            PermissionMiddleware.authenticate,
+            PermissionMiddleware.requirePermission('question.update'),
+            this.validation.validateBody(surveyValidation.updateQuestionSchema())
+        )
+
+        this.delete(
+            "/v1/surveys/:surveyId/questions/:id",
+            "deleteQuestion",
+            PermissionMiddleware.authenticate,
+            PermissionMiddleware.requirePermission('question.delete')
+        )
+
+        this.patch(
+            "/v1/surveys/:surveyId/questions/reorder",
+            "reorderQuestions",
+            PermissionMiddleware.authenticate,
+            PermissionMiddleware.requirePermission('question.update'),
+            this.validation.validateBody(surveyValidation.reorderQuestionsSchema())
+        )
+
+        this.post(
+            "/v1/surveys/:surveyId/builder/save",
+            "saveBuilder",
+            PermissionMiddleware.authenticate,
+            PermissionMiddleware.requireAnyPermission('survey.update', 'question.create', 'question.update'),
+            this.validation.validateBody(surveyValidation.saveBuilderSchema())
+        )
     }
 }
 

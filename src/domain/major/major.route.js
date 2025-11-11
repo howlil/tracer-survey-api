@@ -1,5 +1,6 @@
 const BaseRoute = require("../../shared/base/base.route")
 const majorController = require("./major.controller")
+const PermissionMiddleware = require("../../shared/middlewares/permission.middleware")
 
 class MajorRoute extends BaseRoute {
     constructor() {
@@ -14,7 +15,12 @@ class MajorRoute extends BaseRoute {
     }
 
     createRoute() {
-        this.get("/v1/majors", "findMany")
+        this.get(
+            "/v1/majors",
+            "findMany",
+            PermissionMiddleware.authenticate,
+            PermissionMiddleware.requirePermission('major.manage')
+        )
     }
 }
 

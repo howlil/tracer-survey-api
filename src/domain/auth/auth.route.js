@@ -15,11 +15,6 @@ class AuthRoute extends BaseRoute {
     }
 
     createRoute() {
-        this.get(
-            "/v1/auth/captcha",
-            "generateCaptcha"
-        )
-
         this.post(
             "/v1/auth/admin/login",
             "adminLogin",

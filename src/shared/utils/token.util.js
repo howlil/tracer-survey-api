@@ -5,14 +5,14 @@ class TokenUtil {
     static #jwtSecret = process.env.JWT_SECRET
     static #jwtExpire = '24h'
 
-    static generateToke (userId){
-        const expireIn = this.#jwtExpire;
+    static generateToken(userId) {
+        const expiresIn = this.#jwtExpire;
 
-        try{
+        try {
 
-            const token = jwt.sign({userId},this.#jwtSecret,{expireIn})
+            const token = jwt.sign({ userId }, this.#jwtSecret, { expiresIn })
             return token
-        } catch{
+        } catch {
             throw new Error("Failed to generate Token")
         }
 
@@ -20,14 +20,14 @@ class TokenUtil {
 
     static verifyToken(token) {
         try {
-            
+
             const verify = jwt.verify(token, this.#jwtSecret)
             return verify
 
         } catch (error) {
-            if(error instanceof jwt.TokenExpiredError){
-                throw new Error ("Token has expired")
-            }else if( error instanceof jwt.JsonWebTokenError) {
+            if (error instanceof jwt.TokenExpiredError) {
+                throw new Error("Token has expired")
+            } else if (error instanceof jwt.JsonWebTokenError) {
                 throw new Error("Invalid Token")
             }
             throw new Error("Token Verification failed")
@@ -45,20 +45,20 @@ class TokenUtil {
         }
     }
 
-    static getTokenFromHeader(authHeader){
+    static getTokenFromHeader(authHeader) {
         try {
             if (!authHeader) {
-                throw new Error ("authorization header is required")
+                throw new Error("authorization header is required")
             }
-            if(!authHeader.startWith('Bearer ')) {
-                throw new Error ("invalid authorization header format")
+            if (!authHeader.startsWith('Bearer ')) {
+                throw new Error("invalid authorization header format")
             }
 
             return authHeader.substring(7)
-            
-            
+
+
         } catch (error) {
-            throw new Error ("Invalid authorization header format")
+            throw new Error("Invalid authorization header format")
         }
     }
 
@@ -66,13 +66,13 @@ class TokenUtil {
         try {
             const decode = this.decodeToken(token)
 
-            if(decode.exp) {
+            if (decode.exp) {
                 return false
             }
 
-            const currentTime = Math.floor(Date.now()/1000)
+            const currentTime = Math.floor(Date.now() / 1000)
 
-            return decode.exp <currentTime
+            return decode.exp < currentTime
 
 
         } catch (error) {

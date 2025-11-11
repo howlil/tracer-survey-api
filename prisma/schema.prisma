@@ -103,6 +103,7 @@ model Role {
   id             String           @id @default(uuid())
   roleName       String
   description    String?
+  isSuperAdmin   Boolean          @default(false)
   createdAt      DateTime         @default(now())
   updatedAt      DateTime         @updatedAt
   admins         AdminRole[]
@@ -161,6 +162,10 @@ model Alumni {
   createdAt       DateTime          @default(now())
   updatedAt       DateTime          @updatedAt
   PinAlumni       PinAlumni[]
+
+  @@index([graduatedYear])
+  @@index([majorId])
+  @@index([degree])
 }
 
 model PinAlumni {
@@ -199,14 +204,17 @@ model Faculty {
 }
 
 model Major {
-  id        String   @id @default(uuid())
-  majorName String
-  degree    Degree
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  faculty   Faculty  @relation(fields: [facultyId], references: [id])
-  facultyId String
-  alumni    Alumni[]
+  id          String        @id @default(uuid())
+  majorName   String
+  degree      Degree
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  faculty     Faculty       @relation(fields: [facultyId], references: [id])
+  facultyId   String
+  alumni      Alumni[]
+  surveyRules SurveyRules[]
+
+  @@index([facultyId])
 }
 
 model Faq {
@@ -225,7 +233,7 @@ model Faq {
 
 model Survey {
   id              String               @id @default(uuid())
-  greatingOpening Json
+  greetingOpening Json
   greetingClosing Json
   documentUrl     String?
   description     String?
@@ -237,18 +245,26 @@ model Survey {
   blastEmail      BlastEmail[]
   response        ResponseRespondent[]
   CodeQuestion    CodeQuestion[]
+
+  @@index([status])
+  @@index([targetRole])
 }
 
 model SurveyRules {
   id        String       @id @default(uuid())
   surveyId  String
   facultyId String
+  majorId   String?
   degree    TargetDegree
   survey    Survey       @relation(fields: [surveyId], references: [id])
   faculty   Faculty      @relation(fields: [facultyId], references: [id])
+  major     Major?       @relation(fields: [majorId], references: [id])
   createdAt DateTime     @default(now())
   updatedAt DateTime     @updatedAt
-  majorId   String?
+
+  @@index([surveyId])
+  @@index([facultyId])
+  @@index([majorId])
 }
 
 /**
@@ -291,8 +307,8 @@ model EmailTemplate {
   code         String       @unique
   templateName String
   subject      String
-  bodyText     String
-  bodyHtml     String
+  bodyText     String       @db.Text
+  bodyHtml     String       @db.LongText
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
   BlastEmail   BlastEmail[]
@@ -333,6 +349,10 @@ model Question {
   codeQuestion          CodeQuestion           @relation(fields: [codeId], references: [code])
   updatedAt             DateTime               @updatedAt
   createdAt             DateTime               @default(now())
+
+  @@index([codeId])
+  @@index([groupQuestionId])
+  @@index([sortOrder])
 }
 
 model QuestionTree {

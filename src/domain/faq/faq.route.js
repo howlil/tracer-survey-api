@@ -1,6 +1,7 @@
 const BaseRoute = require("../../shared/base/base.route")
 const faqController = require("./faq.controller")
 const faqValidation = require("./faq.validation")
+const PermissionMiddleware = require("../../shared/middlewares/permission.middleware")
 
 class FaqRoute extends BaseRoute {
     constructor() {
@@ -17,24 +18,32 @@ class FaqRoute extends BaseRoute {
     createRoute() {
         this.get(
             "/v1/faqs",
-            "findMany"
+            "findMany",
+            PermissionMiddleware.authenticate,
+            PermissionMiddleware.requirePermission('faq.manage')
         )
 
         this.post(
             "/v1/faq",
             "create",
+            PermissionMiddleware.authenticate,
+            PermissionMiddleware.requirePermission('faq.manage'),
             this.validation.validateBody(faqValidation.createSchema())
         )
 
         this.patch(
             "/v1/faq/:id",
             "update",
+            PermissionMiddleware.authenticate,
+            PermissionMiddleware.requirePermission('faq.manage'),
             this.validation.validateBody(faqValidation.updateSchema())
         )
 
         this.delete(
             "/v1/faq/:id",
-            "delete"
+            "delete",
+            PermissionMiddleware.authenticate,
+            PermissionMiddleware.requirePermission('faq.manage')
         )
     }
 }

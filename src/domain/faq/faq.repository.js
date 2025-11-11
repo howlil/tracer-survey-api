@@ -8,10 +8,8 @@ class FaqRepository extends BaseRepository {
     async findMany() {
         try {
             return await this.prisma.findMany({
-                select: {
-                    id: true,
-                    title: true,
-                    link: true
+                orderBy: {
+                    createdAt: 'desc'
                 }
             })
 

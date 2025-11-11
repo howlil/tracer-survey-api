@@ -25,12 +25,13 @@ class AuthService {
                 throw new Error('Email atau password salah')
             }
 
-            const token = TokenUtil.generateToke(admin.id)
+            const token = TokenUtil.generateToken(admin.id)
 
             return {
                 id: admin.id,
                 name: admin.name,
                 email: admin.email,
+                username: admin.username,
                 token
             }
         } catch (error) {
@@ -67,7 +68,7 @@ class AuthService {
             const alumni = pinAlumni.alumni
             const respondent = alumni.respondent
 
-            const token = TokenUtil.generateToke(respondent.id)
+            const token = TokenUtil.generateToken(respondent.id)
 
             return {
                 id: respondent.id,
@@ -113,7 +114,7 @@ class AuthService {
             const respondent = manager.respondent
             const alumni = pinManager.alumni
 
-            const token = TokenUtil.generateToke(respondent.id)
+            const token = TokenUtil.generateToken(respondent.id)
 
             return {
                 id: respondent.id,

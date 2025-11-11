@@ -27,15 +27,10 @@ class AuthValidation {
                 .messages({
                     'any.required': 'PIN wajib diisi'
                 }),
-            captchaId: joi.string()
+            recaptchaToken: joi.string()
                 .required()
                 .messages({
-                    'any.required': 'Captcha ID wajib diisi'
-                }),
-            captcha: joi.string()
-                .required()
-                .messages({
-                    'any.required': 'Jawaban captcha wajib diisi'
+                    'any.required': 'reCAPTCHA token wajib diisi'
                 })
         })
     }
@@ -47,15 +42,10 @@ class AuthValidation {
                 .messages({
                     'any.required': 'PIN wajib diisi'
                 }),
-            captchaId: joi.string()
+            recaptchaToken: joi.string()
                 .required()
                 .messages({
-                    'any.required': 'Captcha ID wajib diisi'
-                }),
-            captcha: joi.string()
-                .required()
-                .messages({
-                    'any.required': 'Jawaban captcha wajib diisi'
+                    'any.required': 'reCAPTCHA token wajib diisi'
                 })
         })
     }

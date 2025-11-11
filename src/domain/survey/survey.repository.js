@@ -102,24 +102,31 @@ class SurveyRepository extends BaseRepository {
                 orderBy: { createdAt: 'desc' }
             })
 
-            // Get all counts in parallel for better performance
+            if (result.data.length === 0) {
+                return {
+                    surveys: [],
+                    meta: result.meta
+                }
+            }
+
             const surveyIds = result.data.map(s => s.id)
-            
-            const [questionCounts, responseCounts, rulesCounts] = await Promise.all([
-                // Question counts
-                Promise.all(
-                    surveyIds.map(async (id) => {
-                        const count = await this.getQuestionCount(id)
-                        return { id, count }
-                    })
-                ),
-                // Response counts
+
+            const [codeQuestions, responseCounts, rulesCounts] = await Promise.all([
+                this.prismaClient.codeQuestion.findMany({
+                    where: { surveyId: { in: surveyIds } },
+                    select: {
+                        surveyId: true,
+                        code: true,
+                        _count: {
+                            select: { Question: true }
+                        }
+                    }
+                }),
                 this.prismaClient.responseRespondent.groupBy({
                     by: ['surveyId'],
                     where: { surveyId: { in: surveyIds } },
                     _count: { surveyId: true }
                 }),
-                // Rules counts
                 this.prismaClient.surveyRules.groupBy({
                     by: ['surveyId'],
                     where: { surveyId: { in: surveyIds } },
@@ -127,15 +134,17 @@ class SurveyRepository extends BaseRepository {
                 })
             ])
 
-            // Create maps for quick lookup
-            const questionCountMap = new Map(questionCounts.map(qc => [qc.id, qc.count]))
+            const questionCountMap = new Map()
+            codeQuestions.forEach(cq => {
+                const current = questionCountMap.get(cq.surveyId) || 0
+                questionCountMap.set(cq.surveyId, current + cq._count.Question)
+            })
+
             const responseCountMap = new Map(responseCounts.map(rc => [rc.surveyId, rc._count.surveyId]))
             const rulesCountMap = new Map(rulesCounts.map(rc => [rc.surveyId, rc._count.surveyId]))
 
-            // Format surveys with calculated fields
             const formattedSurveys = result.data.map((survey) => {
-                // Extract name from greetingOpening.title or use description
-                const name = survey.greatingOpening?.title || survey.description || 'Survey'
+                const name = survey.greetingOpening?.title || survey.description || 'Survey'
 
                 return {
                     id: survey.id,
@@ -144,7 +153,7 @@ class SurveyRepository extends BaseRepository {
                     status: survey.status,
                     description: survey.description,
                     documentUrl: survey.documentUrl,
-                    greatingOpening: survey.greatingOpening,
+                    greetingOpening: survey.greetingOpening,
                     greetingClosing: survey.greetingClosing,
                     questionCount: questionCountMap.get(survey.id) || 0,
                     responseCount: responseCountMap.get(survey.id) || 0,
@@ -171,7 +180,12 @@ class SurveyRepository extends BaseRepository {
                 include: {
                     surveyRules: {
                         include: {
-                            faculty: true
+                            faculty: true,
+                            major: {
+                                include: {
+                                    faculty: true
+                                }
+                            }
                         }
                     },
                     CodeQuestion: {
@@ -194,55 +208,38 @@ class SurveyRepository extends BaseRepository {
                 throw new Error("Survey not found")
             }
 
-            const questionCount = await this.prismaClient.question.count({
-                where: {
-                    codeId: {
-                        in: survey.CodeQuestion.map(cq => cq.code)
-                    }
-                }
-            })
-
-            const responseCount = await this.prismaClient.responseRespondent.count({
-                where: { surveyId: id }
-            })
-
-            const name = survey.greatingOpening?.title || survey.description || 'Survey'
-
-            // Get major data for each rule separately since there's no relation in schema
-            const surveyRulesWithMajor = await Promise.all(
-                survey.surveyRules.map(async (rule) => {
-                    let major = null
-                    if (rule.majorId) {
-                        const majorData = await this.prismaClient.major.findUnique({
-                            where: { id: rule.majorId },
-                            include: {
-                                faculty: true
-                            }
-                        })
-                        if (majorData) {
-                            major = {
-                                id: majorData.id,
-                                majorName: majorData.majorName,
-                                faculty: {
-                                    id: majorData.faculty.id,
-                                    facultyName: majorData.faculty.facultyName
-                                }
-                            }
+            const [questionCount, responseCount] = await Promise.all([
+                this.prismaClient.question.count({
+                    where: {
+                        codeId: {
+                            in: survey.CodeQuestion.map(cq => cq.code)
                         }
                     }
-
-                    return {
-                        id: rule.id,
-                        surveyId: rule.surveyId,
-                        facultyId: rule.facultyId,
-                        majorId: rule.majorId,
-                        degree: rule.degree,
-                        major,
-                        createdAt: rule.createdAt,
-                        updatedAt: rule.updatedAt
-                    }
+                }),
+                this.prismaClient.responseRespondent.count({
+                    where: { surveyId: id }
                 })
-            )
+            ])
+
+            const name = survey.greetingOpening?.title || survey.description || 'Survey'
+
+            const surveyRulesWithMajor = survey.surveyRules.map(rule => ({
+                id: rule.id,
+                surveyId: rule.surveyId,
+                facultyId: rule.facultyId,
+                majorId: rule.majorId,
+                degree: rule.degree,
+                major: rule.major ? {
+                    id: rule.major.id,
+                    majorName: rule.major.majorName,
+                    faculty: {
+                        id: rule.major.faculty.id,
+                        facultyName: rule.major.faculty.facultyName
+                    }
+                } : null,
+                createdAt: rule.createdAt,
+                updatedAt: rule.updatedAt
+            }))
 
             return {
                 id: survey.id,
@@ -251,7 +248,7 @@ class SurveyRepository extends BaseRepository {
                 status: survey.status,
                 description: survey.description,
                 documentUrl: survey.documentUrl,
-                greatingOpening: survey.greatingOpening,
+                greetingOpening: survey.greetingOpening,
                 greetingClosing: survey.greetingClosing,
                 surveyRules: surveyRulesWithMajor,
                 questionCount,
@@ -284,7 +281,7 @@ class SurveyRepository extends BaseRepository {
                     targetRole,
                     description,
                     status: 'DRAFT',
-                    greatingOpening: defaultGreetingOpening,
+                    greetingOpening: defaultGreetingOpening,
                     greetingClosing: defaultGreetingClosing
                 }
             })
@@ -301,7 +298,7 @@ class SurveyRepository extends BaseRepository {
                 status: survey.status,
                 description: survey.description,
                 documentUrl: survey.documentUrl,
-                greatingOpening: survey.greatingOpening,
+                greetingOpening: survey.greetingOpening,
                 greetingClosing: survey.greetingClosing,
                 questionCount,
                 responseCount,
@@ -334,19 +331,19 @@ class SurveyRepository extends BaseRepository {
             if (data.documentUrl !== undefined) updateData.documentUrl = data.documentUrl
 
             // Handle greeting updates
-            if (data.greatingOpening) {
-                const currentOpening = existingSurvey.greatingOpening || {}
-                updateData.greatingOpening = {
+            if (data.greetingOpening) {
+                const currentOpening = existingSurvey.greetingOpening || {}
+                updateData.greetingOpening = {
                     ...currentOpening,
-                    ...data.greatingOpening,
-                    greeting: data.greatingOpening.greeting
-                        ? { ...currentOpening.greeting, ...data.greatingOpening.greeting }
+                    ...data.greetingOpening,
+                    greeting: data.greetingOpening.greeting
+                        ? { ...currentOpening.greeting, ...data.greetingOpening.greeting }
                         : currentOpening.greeting,
-                    ikuList: data.greatingOpening.ikuList
-                        ? { ...currentOpening.ikuList, ...data.greatingOpening.ikuList }
+                    ikuList: data.greetingOpening.ikuList
+                        ? { ...currentOpening.ikuList, ...data.greetingOpening.ikuList }
                         : currentOpening.ikuList,
-                    signOff: data.greatingOpening.signOff
-                        ? { ...currentOpening.signOff, ...data.greatingOpening.signOff }
+                    signOff: data.greetingOpening.signOff
+                        ? { ...currentOpening.signOff, ...data.greetingOpening.signOff }
                         : currentOpening.signOff
                 }
             }
@@ -370,11 +367,11 @@ class SurveyRepository extends BaseRepository {
 
             // Update name if provided (update in greetingOpening.title)
             if (data.name) {
-                const currentOpening = existingSurvey.greatingOpening || {}
-                updateData.greatingOpening = {
+                const currentOpening = existingSurvey.greetingOpening || {}
+                updateData.greetingOpening = {
                     ...currentOpening,
                     title: data.name,
-                    ...(updateData.greatingOpening || {})
+                    ...(updateData.greetingOpening || {})
                 }
             }
 
@@ -393,7 +390,7 @@ class SurveyRepository extends BaseRepository {
                 where: { surveyId: id }
             })
 
-            const name = updatedSurvey.greatingOpening?.title || updatedSurvey.description || 'Survey'
+            const name = updatedSurvey.greetingOpening?.title || updatedSurvey.description || 'Survey'
 
             return {
                 id: updatedSurvey.id,
@@ -402,7 +399,7 @@ class SurveyRepository extends BaseRepository {
                 status: updatedSurvey.status,
                 description: updatedSurvey.description,
                 documentUrl: updatedSurvey.documentUrl,
-                greatingOpening: updatedSurvey.greatingOpening,
+                greetingOpening: updatedSurvey.greetingOpening,
                 greetingClosing: updatedSurvey.greetingClosing,
                 questionCount,
                 responseCount,
@@ -449,48 +446,33 @@ class SurveyRepository extends BaseRepository {
             const rules = await this.prismaClient.surveyRules.findMany({
                 where: { surveyId },
                 include: {
-                    faculty: true
+                    faculty: true,
+                    major: {
+                        include: {
+                            faculty: true
+                        }
+                    }
                 },
                 orderBy: { createdAt: 'desc' }
             })
 
-            // Get major data separately since there's no relation in schema
-            const rulesWithMajor = await Promise.all(
-                rules.map(async (rule) => {
-                    let major = null
-                    if (rule.majorId) {
-                        const majorData = await this.prismaClient.major.findUnique({
-                            where: { id: rule.majorId },
-                            include: {
-                                faculty: true
-                            }
-                        })
-                        if (majorData) {
-                            major = {
-                                id: majorData.id,
-                                majorName: majorData.majorName,
-                                faculty: {
-                                    id: majorData.faculty.id,
-                                    facultyName: majorData.faculty.facultyName
-                                }
-                            }
-                        }
+            return rules.map(rule => ({
+                id: rule.id,
+                surveyId: rule.surveyId,
+                facultyId: rule.facultyId,
+                majorId: rule.majorId,
+                degree: rule.degree,
+                major: rule.major ? {
+                    id: rule.major.id,
+                    majorName: rule.major.majorName,
+                    faculty: {
+                        id: rule.major.faculty.id,
+                        facultyName: rule.major.faculty.facultyName
                     }
-
-                    return {
-                        id: rule.id,
-                        surveyId: rule.surveyId,
-                        facultyId: rule.facultyId,
-                        majorId: rule.majorId,
-                        degree: rule.degree,
-                        major,
-                        createdAt: rule.createdAt,
-                        updatedAt: rule.updatedAt
-                    }
-                })
-            )
-
-            return rulesWithMajor
+                } : null,
+                createdAt: rule.createdAt,
+                updatedAt: rule.updatedAt
+            }))
         } catch (error) {
             this.logger.error(error)
             throw error
@@ -540,29 +522,15 @@ class SurveyRepository extends BaseRepository {
                     facultyId: data.facultyId,
                     majorId: data.majorId || null,
                     degree: data.degree
-                }
-            })
-
-            // Get major data separately if exists
-            let major = null
-            if (rule.majorId) {
-                const majorData = await this.prismaClient.major.findUnique({
-                    where: { id: rule.majorId },
-                    include: {
-                        faculty: true
-                    }
-                })
-                if (majorData) {
-                    major = {
-                        id: majorData.id,
-                        majorName: majorData.majorName,
-                        faculty: {
-                            id: majorData.faculty.id,
-                            facultyName: majorData.faculty.facultyName
+                },
+                include: {
+                    major: {
+                        include: {
+                            faculty: true
                         }
                     }
                 }
-            }
+            })
 
             return {
                 id: rule.id,
@@ -570,7 +538,14 @@ class SurveyRepository extends BaseRepository {
                 facultyId: rule.facultyId,
                 majorId: rule.majorId,
                 degree: rule.degree,
-                major,
+                major: rule.major ? {
+                    id: rule.major.id,
+                    majorName: rule.major.majorName,
+                    faculty: {
+                        id: rule.major.faculty.id,
+                        facultyName: rule.major.faculty.facultyName
+                    }
+                } : null,
                 createdAt: rule.createdAt,
                 updatedAt: rule.updatedAt
             }
@@ -627,29 +602,15 @@ class SurveyRepository extends BaseRepository {
 
             const updatedRule = await this.prismaClient.surveyRules.update({
                 where: { id },
-                data: updateData
-            })
-
-            // Get major data separately if exists
-            let major = null
-            if (updatedRule.majorId) {
-                const majorData = await this.prismaClient.major.findUnique({
-                    where: { id: updatedRule.majorId },
-                    include: {
-                        faculty: true
-                    }
-                })
-                if (majorData) {
-                    major = {
-                        id: majorData.id,
-                        majorName: majorData.majorName,
-                        faculty: {
-                            id: majorData.faculty.id,
-                            facultyName: majorData.faculty.facultyName
+                data: updateData,
+                include: {
+                    major: {
+                        include: {
+                            faculty: true
                         }
                     }
                 }
-            }
+            })
 
             return {
                 id: updatedRule.id,
@@ -657,7 +618,14 @@ class SurveyRepository extends BaseRepository {
                 facultyId: updatedRule.facultyId,
                 majorId: updatedRule.majorId,
                 degree: updatedRule.degree,
-                major,
+                major: updatedRule.major ? {
+                    id: updatedRule.major.id,
+                    majorName: updatedRule.major.majorName,
+                    faculty: {
+                        id: updatedRule.major.faculty.id,
+                        facultyName: updatedRule.major.faculty.facultyName
+                    }
+                } : null,
                 createdAt: updatedRule.createdAt,
                 updatedAt: updatedRule.updatedAt
             }
@@ -795,10 +763,8 @@ class SurveyRepository extends BaseRepository {
                     }
                 })
 
-                // Create Questions
                 const createdQuestions = []
                 for (const questionData of data.questions) {
-                    // Create question first
                     const question = await tx.question.create({
                         data: {
                             codeId: data.code,
@@ -813,19 +779,16 @@ class SurveyRepository extends BaseRepository {
                         }
                     })
 
-                    // Create answer options after question is created
                     if (questionData.answerQuestion && questionData.answerQuestion.length > 0) {
-                        for (const optionData of questionData.answerQuestion) {
-                            await tx.answerOptionQuestion.create({
-                                data: {
-                                    questionId: question.id,
-                                    answerText: optionData.answerText,
-                                    sortOrder: optionData.sortOrder,
-                                    otherOptionPlaceholder: optionData.otherOptionPlaceholder || null,
-                                    isTriggered: optionData.isTriggered || false
-                                }
-                            })
-                        }
+                        await tx.answerOptionQuestion.createMany({
+                            data: questionData.answerQuestion.map(opt => ({
+                                questionId: question.id,
+                                answerText: opt.answerText,
+                                sortOrder: opt.sortOrder,
+                                otherOptionPlaceholder: opt.otherOptionPlaceholder || null,
+                                isTriggered: opt.isTriggered || false
+                            }))
+                        })
                     }
 
                     createdQuestions.push(question)
@@ -877,72 +840,69 @@ class SurveyRepository extends BaseRepository {
 
     async updateQuestion(surveyId, id, data) {
         try {
-            // Validate question exists and belongs to survey
-            const question = await this.prismaClient.question.findUnique({
-                where: { id },
-                include: {
-                    codeQuestion: true
-                }
-            })
-
-            if (!question || question.codeQuestion.surveyId !== surveyId) {
-                throw new Error("Question not found")
-            }
-
-            // Update question
-            const updateData = {}
-            if (data.questionText) updateData.questionText = data.questionText
-            if (data.questionType) updateData.questionType = data.questionType
-            if (data.isRequired !== undefined) updateData.isRequired = data.isRequired
-            if (data.sortOrder !== undefined) updateData.sortOrder = data.sortOrder
-            if (data.placeholder !== undefined) updateData.placeholder = data.placeholder
-            if (data.searchplaceholder !== undefined) updateData.searchplaceholder = data.searchplaceholder
-            if (data.parentId !== undefined) updateData.parentId = data.parentId
-            if (data.groupQuestionId) updateData.groupQuestionId = data.groupQuestionId
-
-            // Handle answer options update
-            if (data.answerQuestion && Array.isArray(data.answerQuestion)) {
-                // Delete existing answer options
-                await this.prismaClient.answerOptionQuestion.deleteMany({
-                    where: { questionId: id }
+            const result = await this.prismaClient.$transaction(async (tx) => {
+                const question = await tx.question.findUnique({
+                    where: { id },
+                    include: {
+                        codeQuestion: true
+                    }
                 })
 
-                // Create new answer options
-                for (const optionData of data.answerQuestion) {
-                    await this.prismaClient.answerOptionQuestion.create({
-                        data: {
-                            questionId: id,
-                            answerText: optionData.answerText,
-                            sortOrder: optionData.sortOrder,
-                            otherOptionPlaceholder: optionData.otherOptionPlaceholder || null,
-                            isTriggered: optionData.isTriggered || false
-                        }
-                    })
+                if (!question || question.codeQuestion.surveyId !== surveyId) {
+                    throw new Error("Question not found")
                 }
-            }
 
-            const updatedQuestion = await this.prismaClient.question.update({
-                where: { id },
-                data: updateData,
-                include: {
-                    answerQuestion: {
-                        orderBy: { sortOrder: 'asc' }
+                const updateData = {}
+                if (data.questionText) updateData.questionText = data.questionText
+                if (data.questionType) updateData.questionType = data.questionType
+                if (data.isRequired !== undefined) updateData.isRequired = data.isRequired
+                if (data.sortOrder !== undefined) updateData.sortOrder = data.sortOrder
+                if (data.placeholder !== undefined) updateData.placeholder = data.placeholder
+                if (data.searchplaceholder !== undefined) updateData.searchplaceholder = data.searchplaceholder
+                if (data.parentId !== undefined) updateData.parentId = data.parentId
+                if (data.groupQuestionId) updateData.groupQuestionId = data.groupQuestionId
+
+                if (data.answerQuestion && Array.isArray(data.answerQuestion)) {
+                    await tx.answerOptionQuestion.deleteMany({
+                        where: { questionId: id }
+                    })
+
+                    if (data.answerQuestion.length > 0) {
+                        await tx.answerOptionQuestion.createMany({
+                            data: data.answerQuestion.map(opt => ({
+                                questionId: id,
+                                answerText: opt.answerText,
+                                sortOrder: opt.sortOrder,
+                                otherOptionPlaceholder: opt.otherOptionPlaceholder || null,
+                                isTriggered: opt.isTriggered || false
+                            }))
+                        })
                     }
                 }
+
+                return await tx.question.update({
+                    where: { id },
+                    data: updateData,
+                    include: {
+                        answerQuestion: {
+                            orderBy: { sortOrder: 'asc' }
+                        }
+                    }
+                })
             })
 
             return {
-                id: updatedQuestion.id,
-                codeId: updatedQuestion.codeId,
-                parentId: updatedQuestion.parentId,
-                groupQuestionId: updatedQuestion.groupQuestionId,
-                questionText: updatedQuestion.questionText,
-                questionType: updatedQuestion.questionType,
-                isRequired: updatedQuestion.isRequired,
-                sortOrder: updatedQuestion.sortOrder,
-                placeholder: updatedQuestion.placeholder,
-                searchplaceholder: updatedQuestion.searchplaceholder,
-                answerQuestion: updatedQuestion.answerQuestion.map(ao => ({
+                id: result.id,
+                codeId: result.codeId,
+                parentId: result.parentId,
+                groupQuestionId: result.groupQuestionId,
+                questionText: result.questionText,
+                questionType: result.questionType,
+                isRequired: result.isRequired,
+                sortOrder: result.sortOrder,
+                placeholder: result.placeholder,
+                searchplaceholder: result.searchplaceholder,
+                answerQuestion: result.answerQuestion.map(ao => ({
                     id: ao.id,
                     answerText: ao.answerText,
                     sortOrder: ao.sortOrder,
@@ -961,26 +921,25 @@ class SurveyRepository extends BaseRepository {
 
     async deleteQuestion(surveyId, id) {
         try {
-            // Validate question exists and belongs to survey
-            const question = await this.prismaClient.question.findUnique({
-                where: { id },
-                include: {
-                    codeQuestion: true
+            await this.prismaClient.$transaction(async (tx) => {
+                const question = await tx.question.findUnique({
+                    where: { id },
+                    include: {
+                        codeQuestion: true
+                    }
+                })
+
+                if (!question || question.codeQuestion.surveyId !== surveyId) {
+                    throw new Error("Question not found")
                 }
-            })
 
-            if (!question || question.codeQuestion.surveyId !== surveyId) {
-                throw new Error("Question not found")
-            }
+                await tx.answerOptionQuestion.deleteMany({
+                    where: { questionId: id }
+                })
 
-            // Delete answer options first
-            await this.prismaClient.answerOptionQuestion.deleteMany({
-                where: { questionId: id }
-            })
-
-            // Delete question
-            await this.prismaClient.question.delete({
-                where: { id }
+                await tx.question.delete({
+                    where: { id }
+                })
             })
 
             return true
@@ -1113,7 +1072,6 @@ class SurveyRepository extends BaseRepository {
                             })
                         }
                     } else {
-                        // Create new question
                         const question = await tx.question.create({
                             data: {
                                 codeId: questionData.codeId,
@@ -1128,19 +1086,16 @@ class SurveyRepository extends BaseRepository {
                             }
                         })
 
-                        // Create answer options
                         if (questionData.answerQuestion && questionData.answerQuestion.length > 0) {
-                            for (const optionData of questionData.answerQuestion) {
-                                await tx.answerOptionQuestion.create({
-                                    data: {
-                                        questionId: question.id,
-                                        answerText: optionData.answerText,
-                                        sortOrder: optionData.sortOrder,
-                                        otherOptionPlaceholder: optionData.otherOptionPlaceholder || null,
-                                        isTriggered: optionData.isTriggered || false
-                                    }
-                                })
-                            }
+                            await tx.answerOptionQuestion.createMany({
+                                data: questionData.answerQuestion.map(opt => ({
+                                    questionId: question.id,
+                                    answerText: opt.answerText,
+                                    sortOrder: opt.sortOrder,
+                                    otherOptionPlaceholder: opt.otherOptionPlaceholder || null,
+                                    isTriggered: opt.isTriggered || false
+                                }))
+                            })
                         }
                     }
                 }

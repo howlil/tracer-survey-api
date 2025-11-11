@@ -44,9 +44,9 @@ class BaseController {
     async create(req, res, next) {
         try {
             const data = req.extract.getBody()
-            await this.service.create({ data })
+            const result = await this.service.create({ data })
 
-            return ResponseFactory.created(data).send(res)
+            return ResponseFactory.created(result).send(res)
 
         } catch (error) {
 
@@ -59,12 +59,12 @@ class BaseController {
             const { id } = req.extract.getParams(["id"])
             const data = req.extract.getBody()
 
-            await this.service.update({
+            const result = await this.service.update({
                 where: { id },
                 data
             })
 
-            return ResponseFactory.updated(data).send(res)
+            return ResponseFactory.updated(result).send(res)
         } catch (error) {
             next(error)
         }

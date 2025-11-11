@@ -1,5 +1,6 @@
 const BaseRoute = require("../../shared/base/base.route")
 const facultyController = require("./faculty.controller")
+const PermissionMiddleware = require("../../shared/middlewares/permission.middleware")
 
 class FacultyRoute extends BaseRoute {
     constructor() {
@@ -14,7 +15,12 @@ class FacultyRoute extends BaseRoute {
     }
 
     createRoute() {
-        this.get("/v1/faculties", "findMany")
+        this.get(
+            "/v1/faculties",
+            "findMany",
+            PermissionMiddleware.authenticate,
+            PermissionMiddleware.requirePermission('faculty.manage')
+        )
     }
 }
 

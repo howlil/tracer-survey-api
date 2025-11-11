@@ -1,5 +1,6 @@
 const BaseRoute = require("../../shared/base/base.route")
 const managerController = require("./manager.controller")
+const PermissionMiddleware = require("../../shared/middlewares/permission.middleware")
 
 class ManagerRoute extends BaseRoute {
     constructor() {
@@ -14,9 +15,26 @@ class ManagerRoute extends BaseRoute {
     }
 
     createRoute() {
-        this.get("/v1/managers", "findMany")
-        this.get("/v1/managers/companies", "getCompanies")
-        this.get("/v1/managers/positions", "getPositions")
+        this.get(
+            "/v1/managers",
+            "findMany",
+            PermissionMiddleware.authenticate,
+            PermissionMiddleware.requirePermission('respondent.read')
+        )
+
+        this.get(
+            "/v1/managers/companies",
+            "getCompanies",
+            PermissionMiddleware.authenticate,
+            PermissionMiddleware.requirePermission('respondent.read')
+        )
+
+        this.get(
+            "/v1/managers/positions",
+            "getPositions",
+            PermissionMiddleware.authenticate,
+            PermissionMiddleware.requirePermission('respondent.read')
+        )
     }
 }
 

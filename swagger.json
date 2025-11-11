@@ -14,7 +14,6 @@
       "url": "https://piglet-amused-willingly.ngrok-free.app/api",
       "description": "Development server"
     }
-
   ],
   "tags": [
     {
@@ -101,34 +100,18 @@
               }
             }
           }
-        }
-      }
-    },
-    "/v1/auth/captcha": {
-      "get": {
-        "summary": "Generate Captcha",
-        "description": "Generate captcha for authentication",
-        "tags": [
-          "Authentication"
-        ],
-        "responses": {
-          "200": {
-            "description": "Captcha generated successfully",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/CaptchaResponse"
-                }
-              }
-            }
+        },
+        "security": [
+          {
+            "bearerAuth": []
           }
-        }
+        ]
       }
     },
     "/v1/auth/admin/login": {
       "post": {
         "summary": "Admin Login",
-        "description": "Login endpoint for admin users",
+        "description": "Login endpoint for admin users. No reCAPTCHA required.",
         "tags": [
           "Authentication"
         ],
@@ -162,7 +145,7 @@
     "/v1/auth/alumni/login": {
       "post": {
         "summary": "Alumni Login",
-        "description": "Login endpoint for alumni users",
+        "description": "Login endpoint for alumni users. Requires PIN and Google reCAPTCHA v2 token.",
         "tags": [
           "Authentication"
         ],
@@ -187,6 +170,16 @@
               }
             }
           },
+          "400": {
+            "description": "Bad request - Invalid reCAPTCHA token or validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
           "401": {
             "$ref": "#/components/responses/Unauthorized"
           }
@@ -196,7 +189,7 @@
     "/v1/auth/manager/login": {
       "post": {
         "summary": "Manager Login",
-        "description": "Login endpoint for manager users",
+        "description": "Login endpoint for manager users. Requires PIN and Google reCAPTCHA v2 token.",
         "tags": [
           "Authentication"
         ],
@@ -221,6 +214,16 @@
               }
             }
           },
+          "400": {
+            "description": "Bad request - Invalid reCAPTCHA token or validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
           "401": {
             "$ref": "#/components/responses/Unauthorized"
           }
@@ -230,7 +233,7 @@
     "/v1/surveys": {
       "get": {
         "summary": "Get All Surveys",
-        "description": "Get paginated list of surveys with filters",
+        "description": "Get paginated list of surveys with filters\n\n**Required Permission:** `survey.read`",
         "tags": [
           "Survey"
         ],
@@ -279,12 +282,37 @@
                 }
               }
             }
+          },
+          "401": {
+            "description": "Unauthorized - Invalid or missing authentication token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden - Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
-        }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
       },
       "post": {
         "summary": "Create Survey",
-        "description": "Create a new survey with default greetings",
+        "description": "Create a new survey with default greetings\n\n**Required Permission:** `survey.create`",
         "tags": [
           "Survey"
         ],
@@ -311,14 +339,39 @@
           },
           "400": {
             "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "description": "Unauthorized - Invalid or missing authentication token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden - Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
-        }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
       }
     },
     "/v1/surveys/{id}": {
       "get": {
         "summary": "Get Survey by ID",
-        "description": "Get detailed survey information including rules and questions",
+        "description": "Get detailed survey information including rules and questions\n\n**Required Permission:** `survey.read`",
         "tags": [
           "Survey"
         ],
@@ -338,14 +391,39 @@
               }
             }
           },
+          "401": {
+            "description": "Unauthorized - Invalid or missing authentication token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden - Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
           "404": {
             "$ref": "#/components/responses/NotFound"
           }
-        }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
       },
       "patch": {
         "summary": "Update Survey",
-        "description": "Update survey information or greetings",
+        "description": "Update survey information or greetings\n\n**Required Permission:** `survey.update`",
         "tags": [
           "Survey"
         ],
@@ -378,14 +456,39 @@
           "400": {
             "$ref": "#/components/responses/BadRequest"
           },
+          "401": {
+            "description": "Unauthorized - Invalid or missing authentication token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden - Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
           "404": {
             "$ref": "#/components/responses/NotFound"
           }
-        }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
       },
       "delete": {
         "summary": "Delete Survey",
-        "description": "Delete a survey (only if no responses exist)",
+        "description": "Delete a survey (only if no responses exist)\n\n**Required Permission:** `survey.delete`",
         "tags": [
           "Survey"
         ],
@@ -405,19 +508,44 @@
               }
             }
           },
+          "401": {
+            "description": "Unauthorized - Invalid or missing authentication token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden - Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
           "404": {
             "$ref": "#/components/responses/NotFound"
           },
           "409": {
             "description": "Cannot delete survey with responses"
           }
-        }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
       }
     },
     "/v1/surveys/{surveyId}/rules": {
       "get": {
         "summary": "Get Survey Rules",
-        "description": "Get all rules for a survey",
+        "description": "Get all rules for a survey\n\n**Required Permission:** `survey.read`",
         "tags": [
           "Survey Rules"
         ],
@@ -450,12 +578,37 @@
                 }
               }
             }
+          },
+          "401": {
+            "description": "Unauthorized - Invalid or missing authentication token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden - Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
-        }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
       },
       "post": {
         "summary": "Create Survey Rule",
-        "description": "Create a new rule for a survey",
+        "description": "Create a new rule for a survey\n\n**Required Permission:** `survey.update`",
         "tags": [
           "Survey Rules"
         ],
@@ -498,14 +651,39 @@
           },
           "400": {
             "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "description": "Unauthorized - Invalid or missing authentication token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden - Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
-        }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
       }
     },
     "/v1/surveys/{surveyId}/rules/{id}": {
       "patch": {
         "summary": "Update Survey Rule",
-        "description": "Update a survey rule",
+        "description": "Update a survey rule\n\n**Required Permission:** `survey.update`",
         "tags": [
           "Survey Rules"
         ],
@@ -549,14 +727,39 @@
               }
             }
           },
+          "401": {
+            "description": "Unauthorized - Invalid or missing authentication token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden - Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
           "404": {
             "$ref": "#/components/responses/NotFound"
           }
-        }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
       },
       "delete": {
         "summary": "Delete Survey Rule",
-        "description": "Delete a survey rule",
+        "description": "Delete a survey rule\n\n**Required Permission:** `survey.update`",
         "tags": [
           "Survey Rules"
         ],
@@ -579,16 +782,41 @@
               }
             }
           },
+          "401": {
+            "description": "Unauthorized - Invalid or missing authentication token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden - Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
           "404": {
             "$ref": "#/components/responses/NotFound"
           }
-        }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
       }
     },
     "/v1/surveys/{surveyId}/questions": {
       "get": {
         "summary": "Get Survey Questions",
-        "description": "Get all questions for a survey, optionally filtered by code",
+        "description": "Get all questions for a survey, optionally filtered by code\n\n**Required Permission:** `survey.read OR question.read`",
         "tags": [
           "Survey Questions"
         ],
@@ -615,14 +843,39 @@
                 }
               }
             }
+          },
+          "401": {
+            "description": "Unauthorized - Invalid or missing authentication token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden - Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
-        }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
       }
     },
     "/v1/surveys/{surveyId}/code-questions": {
       "post": {
         "summary": "Create CodeQuestion",
-        "description": "Create a new CodeQuestion with questions",
+        "description": "Create a new CodeQuestion with questions\n\n**Required Permission:** `question.create`",
         "tags": [
           "Survey Questions"
         ],
@@ -655,16 +908,41 @@
           "400": {
             "$ref": "#/components/responses/BadRequest"
           },
+          "401": {
+            "description": "Unauthorized - Invalid or missing authentication token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden - Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
           "409": {
             "description": "CodeQuestion code already exists"
           }
-        }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
       }
     },
     "/v1/surveys/{surveyId}/questions/{id}": {
       "patch": {
         "summary": "Update Question",
-        "description": "Update a question",
+        "description": "Update a question\n\n**Required Permission:** `question.update`",
         "tags": [
           "Survey Questions"
         ],
@@ -697,14 +975,39 @@
               }
             }
           },
+          "401": {
+            "description": "Unauthorized - Invalid or missing authentication token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden - Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
           "404": {
             "$ref": "#/components/responses/NotFound"
           }
-        }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
       },
       "delete": {
         "summary": "Delete Question",
-        "description": "Delete a question",
+        "description": "Delete a question\n\n**Required Permission:** `question.delete`",
         "tags": [
           "Survey Questions"
         ],
@@ -727,16 +1030,41 @@
               }
             }
           },
+          "401": {
+            "description": "Unauthorized - Invalid or missing authentication token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden - Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
           "404": {
             "$ref": "#/components/responses/NotFound"
           }
-        }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
       }
     },
     "/v1/surveys/{surveyId}/questions/reorder": {
       "patch": {
         "summary": "Reorder Questions",
-        "description": "Update sort order of questions",
+        "description": "Update sort order of questions\n\n**Required Permission:** `question.update`",
         "tags": [
           "Survey Questions"
         ],
@@ -765,14 +1093,39 @@
                 }
               }
             }
+          },
+          "401": {
+            "description": "Unauthorized - Invalid or missing authentication token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden - Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
-        }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
       }
     },
     "/v1/surveys/{surveyId}/builder/save": {
       "post": {
         "summary": "Save Survey Builder",
-        "description": "Save complete survey structure (pages and questions)",
+        "description": "Save complete survey structure (pages and questions)\n\n**Required Permission:** `survey.update OR question.create OR question.update`",
         "tags": [
           "Survey Questions"
         ],
@@ -824,14 +1177,39 @@
                 }
               }
             }
+          },
+          "401": {
+            "description": "Unauthorized - Invalid or missing authentication token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden - Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
-        }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
       }
     },
     "/v1/email-templates": {
       "get": {
         "summary": "Get Email Templates",
-        "description": "Get paginated list of email templates",
+        "description": "Get paginated list of email templates\n\n**Required Permission:** `email.template.manage`",
         "tags": [
           "Email Templates"
         ],
@@ -856,12 +1234,37 @@
                 }
               }
             }
+          },
+          "401": {
+            "description": "Unauthorized - Invalid or missing authentication token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden - Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
-        }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
       },
       "post": {
         "summary": "Create Email Template",
-        "description": "Create a new email template",
+        "description": "Create a new email template\n\n**Required Permission:** `email.template.manage`",
         "tags": [
           "Email Templates"
         ],
@@ -888,14 +1291,39 @@
           },
           "400": {
             "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "description": "Unauthorized - Invalid or missing authentication token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden - Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
-        }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
       }
     },
     "/v1/email-templates/{id}": {
       "get": {
         "summary": "Get Email Template by ID",
-        "description": "Get email template details",
+        "description": "Get email template details\n\n**Required Permission:** `email.template.manage`",
         "tags": [
           "Email Templates"
         ],
@@ -915,14 +1343,39 @@
               }
             }
           },
+          "401": {
+            "description": "Unauthorized - Invalid or missing authentication token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden - Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
           "404": {
             "$ref": "#/components/responses/NotFound"
           }
-        }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
       },
       "patch": {
         "summary": "Update Email Template",
-        "description": "Update an email template",
+        "description": "Update an email template\n\n**Required Permission:** `email.template.manage`",
         "tags": [
           "Email Templates"
         ],
@@ -952,14 +1405,39 @@
               }
             }
           },
+          "401": {
+            "description": "Unauthorized - Invalid or missing authentication token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden - Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
           "404": {
             "$ref": "#/components/responses/NotFound"
           }
-        }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
       },
       "delete": {
         "summary": "Delete Email Template",
-        "description": "Delete an email template",
+        "description": "Delete an email template\n\n**Required Permission:** `email.template.manage`",
         "tags": [
           "Email Templates"
         ],
@@ -979,16 +1457,41 @@
               }
             }
           },
+          "401": {
+            "description": "Unauthorized - Invalid or missing authentication token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden - Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
           "404": {
             "$ref": "#/components/responses/NotFound"
           }
-        }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
       }
     },
     "/v1/blast-emails": {
       "get": {
         "summary": "Get Blast Emails",
-        "description": "Get paginated list of blast emails",
+        "description": "Get paginated list of blast emails\n\n**Required Permission:** `email.read`",
         "tags": [
           "Blast Emails"
         ],
@@ -1013,12 +1516,37 @@
                 }
               }
             }
+          },
+          "401": {
+            "description": "Unauthorized - Invalid or missing authentication token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden - Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
-        }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
       },
       "post": {
         "summary": "Create Blast Email",
-        "description": "Create a new blast email",
+        "description": "Create a new blast email\n\n**Required Permission:** `email.create`",
         "tags": [
           "Blast Emails"
         ],
@@ -1045,14 +1573,39 @@
           },
           "400": {
             "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "description": "Unauthorized - Invalid or missing authentication token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden - Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
-        }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
       }
     },
     "/v1/blast-emails/{id}": {
       "get": {
         "summary": "Get Blast Email by ID",
-        "description": "Get blast email details",
+        "description": "Get blast email details\n\n**Required Permission:** `email.read`",
         "tags": [
           "Blast Emails"
         ],
@@ -1072,14 +1625,39 @@
               }
             }
           },
+          "401": {
+            "description": "Unauthorized - Invalid or missing authentication token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden - Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
           "404": {
             "$ref": "#/components/responses/NotFound"
           }
-        }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
       },
       "patch": {
         "summary": "Update Blast Email",
-        "description": "Update a blast email",
+        "description": "Update a blast email\n\n**Required Permission:** `email.update`",
         "tags": [
           "Blast Emails"
         ],
@@ -1109,14 +1687,39 @@
               }
             }
           },
+          "401": {
+            "description": "Unauthorized - Invalid or missing authentication token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden - Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
           "404": {
             "$ref": "#/components/responses/NotFound"
           }
-        }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
       },
       "delete": {
         "summary": "Delete Blast Email",
-        "description": "Delete a blast email",
+        "description": "Delete a blast email\n\n**Required Permission:** `email.delete`",
         "tags": [
           "Blast Emails"
         ],
@@ -1136,16 +1739,41 @@
               }
             }
           },
+          "401": {
+            "description": "Unauthorized - Invalid or missing authentication token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden - Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
           "404": {
             "$ref": "#/components/responses/NotFound"
           }
-        }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
       }
     },
     "/v1/blast-emails/preview-count": {
       "post": {
         "summary": "Preview Recipient Count",
-        "description": "Preview how many recipients will receive the blast email",
+        "description": "Preview how many recipients will receive the blast email\n\n**Required Permission:** `email.read`",
         "tags": [
           "Blast Emails"
         ],
@@ -1186,14 +1814,39 @@
                 }
               }
             }
+          },
+          "401": {
+            "description": "Unauthorized - Invalid or missing authentication token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden - Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
-        }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
       }
     },
     "/v1/responses/tracer-study": {
       "get": {
         "summary": "Get Tracer Study Responses",
-        "description": "Get paginated list of tracer study (alumni) responses",
+        "description": "Get paginated list of tracer study (alumni) responses\n\n**Required Permission:** `response.read`",
         "tags": [
           "Responses"
         ],
@@ -1269,14 +1922,39 @@
                 }
               }
             }
+          },
+          "401": {
+            "description": "Unauthorized - Invalid or missing authentication token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden - Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
-        }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
       }
     },
     "/v1/responses/tracer-study/{id}": {
       "get": {
         "summary": "Get Tracer Study Response Detail",
-        "description": "Get detailed tracer study response with all answers",
+        "description": "Get detailed tracer study response with all answers\n\n**Required Permission:** `response.read`",
         "tags": [
           "Responses"
         ],
@@ -1302,16 +1980,41 @@
               }
             }
           },
+          "401": {
+            "description": "Unauthorized - Invalid or missing authentication token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden - Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
           "404": {
             "$ref": "#/components/responses/NotFound"
           }
-        }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
       }
     },
     "/v1/responses/tracer-study/export": {
       "get": {
         "summary": "Export Tracer Study Responses",
-        "description": "Export tracer study responses to Excel",
+        "description": "Export tracer study responses to Excel\n\n**Required Permission:** `response.export`",
         "tags": [
           "Responses"
         ],
@@ -1394,14 +2097,39 @@
                 }
               }
             }
+          },
+          "401": {
+            "description": "Unauthorized - Invalid or missing authentication token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden - Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
-        }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
       }
     },
     "/v1/responses/user-survey": {
       "get": {
         "summary": "Get User Survey Responses",
-        "description": "Get paginated list of user survey (manager) responses",
+        "description": "Get paginated list of user survey (manager) responses\n\n**Required Permission:** `response.read`",
         "tags": [
           "Responses"
         ],
@@ -1440,14 +2168,39 @@
                 }
               }
             }
+          },
+          "401": {
+            "description": "Unauthorized - Invalid or missing authentication token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden - Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
-        }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
       }
     },
     "/v1/responses/user-survey/{id}": {
       "get": {
         "summary": "Get User Survey Response Detail",
-        "description": "Get detailed user survey response with all answers",
+        "description": "Get detailed user survey response with all answers\n\n**Required Permission:** `response.read`",
         "tags": [
           "Responses"
         ],
@@ -1473,16 +2226,41 @@
               }
             }
           },
+          "401": {
+            "description": "Unauthorized - Invalid or missing authentication token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden - Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
           "404": {
             "$ref": "#/components/responses/NotFound"
           }
-        }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
       }
     },
     "/v1/responses/user-survey/export": {
       "get": {
         "summary": "Export User Survey Responses",
-        "description": "Export user survey responses to Excel",
+        "description": "Export user survey responses to Excel\n\n**Required Permission:** `response.export`",
         "tags": [
           "Responses"
         ],
@@ -1528,14 +2306,39 @@
                 }
               }
             }
+          },
+          "401": {
+            "description": "Unauthorized - Invalid or missing authentication token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden - Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
-        }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
       }
     },
     "/v1/admins": {
       "get": {
         "summary": "Get All Admins",
-        "description": "Get paginated list of admin users",
+        "description": "Get paginated list of admin users\n\n**Required Permission:** `admin.read`",
         "tags": [
           "Admin"
         ],
@@ -1560,12 +2363,37 @@
                 }
               }
             }
+          },
+          "401": {
+            "description": "Unauthorized - Invalid or missing authentication token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden - Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
-        }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
       },
       "post": {
         "summary": "Create Admin",
-        "description": "Create a new admin user",
+        "description": "Create a new admin user\n\n**Required Permission:** `admin.create`",
         "tags": [
           "Admin"
         ],
@@ -1592,14 +2420,39 @@
           },
           "400": {
             "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "description": "Unauthorized - Invalid or missing authentication token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden - Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
-        }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
       }
     },
     "/v1/admins/{id}": {
       "get": {
         "summary": "Get Admin by ID",
-        "description": "Get admin user details",
+        "description": "Get admin user details\n\n**Required Permission:** `admin.read`",
         "tags": [
           "Admin"
         ],
@@ -1619,14 +2472,39 @@
               }
             }
           },
+          "401": {
+            "description": "Unauthorized - Invalid or missing authentication token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden - Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
           "404": {
             "$ref": "#/components/responses/NotFound"
           }
-        }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
       },
       "patch": {
         "summary": "Update Admin",
-        "description": "Update an admin user",
+        "description": "Update an admin user\n\n**Required Permission:** `admin.update`",
         "tags": [
           "Admin"
         ],
@@ -1656,14 +2534,39 @@
               }
             }
           },
+          "401": {
+            "description": "Unauthorized - Invalid or missing authentication token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden - Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
           "404": {
             "$ref": "#/components/responses/NotFound"
           }
-        }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
       },
       "delete": {
         "summary": "Delete Admin",
-        "description": "Delete an admin user",
+        "description": "Delete an admin user\n\n**Required Permission:** `admin.delete`",
         "tags": [
           "Admin"
         ],
@@ -1683,16 +2586,41 @@
               }
             }
           },
+          "401": {
+            "description": "Unauthorized - Invalid or missing authentication token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden - Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
           "404": {
             "$ref": "#/components/responses/NotFound"
           }
-        }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
       }
     },
     "/v1/alumni": {
       "get": {
         "summary": "Get All Alumni",
-        "description": "Get paginated list of alumni",
+        "description": "Get paginated list of alumni\n\n**Required Permission:** `respondent.read`",
         "tags": [
           "Alumni"
         ],
@@ -1717,14 +2645,39 @@
                 }
               }
             }
+          },
+          "401": {
+            "description": "Unauthorized - Invalid or missing authentication token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden - Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
-        }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
       }
     },
     "/v1/managers": {
       "get": {
         "summary": "Get All Managers",
-        "description": "Get paginated list of managers",
+        "description": "Get paginated list of managers\n\n**Required Permission:** `respondent.read`",
         "tags": [
           "Manager"
         ],
@@ -1749,14 +2702,39 @@
                 }
               }
             }
+          },
+          "401": {
+            "description": "Unauthorized - Invalid or missing authentication token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden - Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
-        }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
       }
     },
     "/v1/managers/companies": {
       "get": {
         "summary": "Get Companies",
-        "description": "Get list of unique companies",
+        "description": "Get list of unique companies\n\n**Required Permission:** `respondent.read`",
         "tags": [
           "Manager"
         ],
@@ -1784,14 +2762,39 @@
                 }
               }
             }
+          },
+          "401": {
+            "description": "Unauthorized - Invalid or missing authentication token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden - Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
-        }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
       }
     },
     "/v1/managers/positions": {
       "get": {
         "summary": "Get Positions",
-        "description": "Get list of unique positions",
+        "description": "Get list of unique positions\n\n**Required Permission:** `respondent.read`",
         "tags": [
           "Manager"
         ],
@@ -1819,14 +2822,39 @@
                 }
               }
             }
+          },
+          "401": {
+            "description": "Unauthorized - Invalid or missing authentication token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden - Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
-        }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
       }
     },
     "/v1/faculties": {
       "get": {
         "summary": "Get All Faculties",
-        "description": "Get list of all faculties",
+        "description": "Get list of all faculties\n\n**Required Permission:** `faculty.manage`",
         "tags": [
           "Faculty"
         ],
@@ -1840,14 +2868,39 @@
                 }
               }
             }
+          },
+          "401": {
+            "description": "Unauthorized - Invalid or missing authentication token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden - Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
-        }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
       }
     },
     "/v1/majors": {
       "get": {
         "summary": "Get All Majors",
-        "description": "Get list of all majors with faculty information",
+        "description": "Get list of all majors with faculty information\n\n**Required Permission:** `major.manage`",
         "tags": [
           "Major"
         ],
@@ -1861,14 +2914,39 @@
                 }
               }
             }
+          },
+          "401": {
+            "description": "Unauthorized - Invalid or missing authentication token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden - Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
-        }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
       }
     },
     "/v1/roles": {
       "get": {
         "summary": "Get All Roles",
-        "description": "Get paginated list of roles",
+        "description": "Get paginated list of roles\n\n**Required Permission:** `role.read`",
         "tags": [
           "RolePermission"
         ],
@@ -1893,12 +2971,37 @@
                 }
               }
             }
+          },
+          "401": {
+            "description": "Unauthorized - Invalid or missing authentication token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden - Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
-        }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
       },
       "post": {
         "summary": "Create Role",
-        "description": "Create a new role",
+        "description": "Create a new role\n\n**Required Permission:** `role.create`",
         "tags": [
           "RolePermission"
         ],
@@ -1925,14 +3028,39 @@
           },
           "400": {
             "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "description": "Unauthorized - Invalid or missing authentication token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden - Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
-        }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
       }
     },
     "/v1/roles/{id}": {
       "get": {
         "summary": "Get Role by ID",
-        "description": "Get role details with permissions",
+        "description": "Get role details with permissions\n\n**Required Permission:** `role.read`",
         "tags": [
           "RolePermission"
         ],
@@ -1952,14 +3080,39 @@
               }
             }
           },
+          "401": {
+            "description": "Unauthorized - Invalid or missing authentication token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden - Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
           "404": {
             "$ref": "#/components/responses/NotFound"
           }
-        }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
       },
       "patch": {
         "summary": "Update Role",
-        "description": "Update a role",
+        "description": "Update a role\n\n**Required Permission:** `role.update`",
         "tags": [
           "RolePermission"
         ],
@@ -1989,14 +3142,39 @@
               }
             }
           },
+          "401": {
+            "description": "Unauthorized - Invalid or missing authentication token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden - Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
           "404": {
             "$ref": "#/components/responses/NotFound"
           }
-        }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
       },
       "delete": {
         "summary": "Delete Role",
-        "description": "Delete a role",
+        "description": "Delete a role\n\n**Required Permission:** `role.delete`",
         "tags": [
           "RolePermission"
         ],
@@ -2016,16 +3194,41 @@
               }
             }
           },
+          "401": {
+            "description": "Unauthorized - Invalid or missing authentication token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden - Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
           "404": {
             "$ref": "#/components/responses/NotFound"
           }
-        }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
       }
     },
     "/v1/roles/resources": {
       "get": {
         "summary": "Get Resources",
-        "description": "Get list of available resources for permissions",
+        "description": "Get list of available resources for permissions\n\n**Required Permission:** `role.read`",
         "tags": [
           "RolePermission"
         ],
@@ -2053,14 +3256,39 @@
                 }
               }
             }
+          },
+          "401": {
+            "description": "Unauthorized - Invalid or missing authentication token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden - Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
-        }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
       }
     },
     "/v1/faqs": {
       "get": {
         "summary": "Get All FAQs",
-        "description": "Get list of all FAQs",
+        "description": "Get list of all FAQs\n\n**Required Permission:** `faq.manage`",
         "tags": [
           "FAQ"
         ],
@@ -2074,14 +3302,39 @@
                 }
               }
             }
+          },
+          "401": {
+            "description": "Unauthorized - Invalid or missing authentication token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden - Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
-        }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
       }
     },
     "/v1/faq": {
       "post": {
         "summary": "Create FAQ",
-        "description": "Create a new FAQ",
+        "description": "Create a new FAQ\n\n**Required Permission:** `faq.manage`",
         "tags": [
           "FAQ"
         ],
@@ -2108,14 +3361,39 @@
           },
           "400": {
             "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "description": "Unauthorized - Invalid or missing authentication token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden - Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
-        }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
       }
     },
     "/v1/faq/{id}": {
       "patch": {
         "summary": "Update FAQ",
-        "description": "Update an FAQ",
+        "description": "Update an FAQ\n\n**Required Permission:** `faq.manage`",
         "tags": [
           "FAQ"
         ],
@@ -2145,14 +3423,39 @@
               }
             }
           },
+          "401": {
+            "description": "Unauthorized - Invalid or missing authentication token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden - Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
           "404": {
             "$ref": "#/components/responses/NotFound"
           }
-        }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
       },
       "delete": {
         "summary": "Delete FAQ",
-        "description": "Delete an FAQ",
+        "description": "Delete an FAQ\n\n**Required Permission:** `faq.manage`",
         "tags": [
           "FAQ"
         ],
@@ -2172,10 +3475,35 @@
               }
             }
           },
+          "401": {
+            "description": "Unauthorized - Invalid or missing authentication token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden - Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
           "404": {
             "$ref": "#/components/responses/NotFound"
           }
-        }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
       }
     }
   },
@@ -2354,88 +3682,61 @@
           }
         }
       },
-      "CaptchaResponse": {
-        "type": "object",
-        "properties": {
-          "success": {
-            "type": "boolean"
-          },
-          "message": {
-            "type": "string"
-          },
-          "data": {
-            "type": "object",
-            "properties": {
-              "captcha": {
-                "type": "string"
-              },
-              "image": {
-                "type": "string"
-              }
-            }
-          }
-        }
-      },
       "AdminLoginRequest": {
         "type": "object",
         "required": [
-          "username",
-          "password",
-          "captcha",
-          "captchaId"
+          "email",
+          "password"
         ],
         "properties": {
-          "username": {
+          "email": {
             "type": "string",
-            "example": "admin"
+            "format": "email",
+            "example": "admin@unand.ac.id"
           },
           "password": {
             "type": "string",
             "format": "password",
+            "minLength": 6,
             "example": "password123"
-          },
-          "captcha": {
-            "type": "string",
-            "example": "ABC123"
-          },
-          "captchaId": {
-            "type": "string",
-            "example": "captcha-id-123"
           }
         }
       },
       "AlumniLoginRequest": {
         "type": "object",
         "required": [
-          "nim",
-          "pin"
+          "pin",
+          "recaptchaToken"
         ],
         "properties": {
-          "nim": {
-            "type": "string",
-            "example": 1234567890
-          },
           "pin": {
             "type": "string",
-            "example": 123456
+            "description": "PIN for alumni authentication",
+            "example": "ALUMNI-PIN-12345"
+          },
+          "recaptchaToken": {
+            "type": "string",
+            "description": "Google reCAPTCHA v2 token from frontend",
+            "example": "03AGdBq27..."
           }
         }
       },
       "ManagerLoginRequest": {
         "type": "object",
         "required": [
-          "email",
-          "pin"
+          "pin",
+          "recaptchaToken"
         ],
         "properties": {
-          "email": {
-            "type": "string",
-            "format": "email",
-            "example": "manager@company.com"
-          },
           "pin": {
             "type": "string",
-            "example": 123456
+            "description": "PIN for manager authentication",
+            "example": "MANAGER-PIN-67890"
+          },
+          "recaptchaToken": {
+            "type": "string",
+            "description": "Google reCAPTCHA v2 token from frontend",
+            "example": "03AGdBq27..."
           }
         }
       },
@@ -2443,19 +3744,51 @@
         "type": "object",
         "properties": {
           "success": {
-            "type": "boolean"
+            "type": "boolean",
+            "example": true
           },
           "message": {
-            "type": "string"
+            "type": "string",
+            "example": "Login successful"
           },
           "data": {
             "type": "object",
             "properties": {
-              "token": {
-                "type": "string"
+              "id": {
+                "type": "string",
+                "format": "uuid"
               },
-              "user": {
-                "type": "object"
+              "name": {
+                "type": "string",
+                "example": "John Doe"
+              },
+              "email": {
+                "type": "string",
+                "format": "email",
+                "example": "user@example.com"
+              },
+              "username": {
+                "type": "string",
+                "example": "johndoe",
+                "description": "Only for admin login response"
+              },
+              "token": {
+                "type": "string",
+                "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+              },
+              "alumniId": {
+                "type": "string",
+                "format": "uuid",
+                "description": "Only for manager login response - ID of alumni being surveyed"
+              },
+              "alumniName": {
+                "type": "string",
+                "description": "Only for manager login response - Name of alumni being surveyed"
+              },
+              "alumniEmail": {
+                "type": "string",
+                "format": "email",
+                "description": "Only for manager login response - Email of alumni being surveyed"
               }
             }
           }
