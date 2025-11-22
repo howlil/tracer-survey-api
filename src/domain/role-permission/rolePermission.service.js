@@ -36,10 +36,16 @@ class RolePermissionService extends BaseService {
     async create(options = {}) {
         try {
             const { data } = options
-            const { permissions, ...roleData } = data
+            const { permissionIds, roleName, description } = data
+
+            // Convert permissionIds to permissions format
+            const permissions = (permissionIds || []).map(permId => {
+                const [resource, action] = permId.split('.')
+                return `${resource}.${action}`
+            })
 
             const result = await this.rolePermissionRepository.createWithPermissions({
-                roleData,
+                roleData: { name: roleName, description },
                 permissions
             })
 
@@ -53,11 +59,22 @@ class RolePermissionService extends BaseService {
     async update(options = {}) {
         try {
             const { where, data } = options
-            const { permissions, ...roleData } = data
+            const { permissionIds, roleName, description } = data
+
+            // Convert permissionIds to permissions format if provided
+            const permissions = permissionIds
+                ? permissionIds.map(permId => {
+                    const [resource, action] = permId.split('.')
+                    return `${resource}.${action}`
+                })
+                : undefined
 
             const result = await this.rolePermissionRepository.updateWithPermissions({
                 where,
-                roleData,
+                roleData: {
+                    ...(roleName && { name: roleName }),
+                    ...(description !== undefined && { description })
+                },
                 permissions
             })
 

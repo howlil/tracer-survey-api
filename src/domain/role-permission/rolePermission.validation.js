@@ -17,7 +17,7 @@ const validActions = {
 class RolePermissionValidation {
     static createSchema() {
         return joi.object({
-            name: joi.string()
+            roleName: joi.string()
                 .min(2)
                 .max(100)
                 .trim()
@@ -38,37 +38,8 @@ class RolePermissionValidation {
                     'string.max': 'Description maksimal 500 karakter'
                 }),
 
-            permissions: joi.array()
-                .items(
-                    joi.object({
-                        resource: joi.string()
-                            .valid(...validResources)
-                            .required()
-                            .messages({
-                                'any.only': 'Resource tidak valid',
-                                'any.required': 'Resource wajib diisi'
-                            }),
-                        actions: joi.array()
-                            .items(joi.string())
-                            .min(1)
-                            .required()
-                            .messages({
-                                'array.min': 'Minimal satu action harus dipilih',
-                                'any.required': 'Actions wajib diisi'
-                            })
-                    }).custom((value, helpers) => {
-                        const { resource, actions } = value
-                        const validActionsForResource = validActions[resource] || []
-                        const invalidActions = actions.filter(action => !validActionsForResource.includes(action))
-                        
-                        if (invalidActions.length > 0) {
-                            return helpers.error('any.invalid', {
-                                message: `Action tidak valid untuk resource ${resource}. Actions yang valid: ${validActionsForResource.join(', ')}`
-                            })
-                        }
-                        return value
-                    })
-                )
+            permissionIds: joi.array()
+                .items(joi.string())
                 .min(1)
                 .required()
                 .messages({
@@ -80,7 +51,7 @@ class RolePermissionValidation {
 
     static updateSchema() {
         return joi.object({
-            name: joi.string()
+            roleName: joi.string()
                 .min(2)
                 .max(100)
                 .trim()
@@ -100,37 +71,8 @@ class RolePermissionValidation {
                     'string.max': 'Description maksimal 500 karakter'
                 }),
 
-            permissions: joi.array()
-                .items(
-                    joi.object({
-                        resource: joi.string()
-                            .valid(...validResources)
-                            .required()
-                            .messages({
-                                'any.only': 'Resource tidak valid',
-                                'any.required': 'Resource wajib diisi'
-                            }),
-                        actions: joi.array()
-                            .items(joi.string())
-                            .min(1)
-                            .required()
-                            .messages({
-                                'array.min': 'Minimal satu action harus dipilih',
-                                'any.required': 'Actions wajib diisi'
-                            })
-                    }).custom((value, helpers) => {
-                        const { resource, actions } = value
-                        const validActionsForResource = validActions[resource] || []
-                        const invalidActions = actions.filter(action => !validActionsForResource.includes(action))
-                        
-                        if (invalidActions.length > 0) {
-                            return helpers.error('any.invalid', {
-                                message: `Action tidak valid untuk resource ${resource}. Actions yang valid: ${validActionsForResource.join(', ')}`
-                            })
-                        }
-                        return value
-                    })
-                )
+            permissionIds: joi.array()
+                .items(joi.string())
                 .min(1)
                 .optional()
                 .messages({

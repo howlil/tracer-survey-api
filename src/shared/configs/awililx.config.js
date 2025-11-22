@@ -36,7 +36,7 @@ class AwilixConfig {
                 lifetime: awilix.Lifetime.SINGLETON
             }
         })
-        console.log('🔧 After loading services:', Object.keys(this.container.registrations))
+        logger.info('🔧 Services loaded:', Object.keys(this.container.registrations))
 
         this.container.loadModules([
             'src/domain/*/*controller.js'

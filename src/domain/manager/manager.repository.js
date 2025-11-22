@@ -8,7 +8,7 @@ class ManagerRepository extends BaseRepository {
 
     async findManyWithPagination(options = {}) {
         try {
-            const { page = 1, limit = 10, search, company, position } = options
+            const { page = 1, limit = 10, search, company, position, accessibleFacultyIds } = options
 
             const where = {}
             if (search) {
@@ -22,6 +22,17 @@ class ManagerRepository extends BaseRepository {
             }
             if (position) {
                 where.position = { contains: position, mode: 'insensitive' }
+            }
+            if (accessibleFacultyIds && accessibleFacultyIds.length > 0) {
+                where.PinAlumni = {
+                    some: {
+                        alumni: {
+                            major: {
+                                facultyId: { in: accessibleFacultyIds }
+                            }
+                        }
+                    }
+                }
             }
 
             // Use getAll from base repository
@@ -108,6 +119,82 @@ class ManagerRepository extends BaseRepository {
             this.logger.error(error)
             throw error
         }
+    }
+
+    async findPinsWithAlumni(pins = []) {
+        return this.prismaClient.pinAlumni.findMany({
+            where: {
+                pin: { in: pins },
+            },
+            include: {
+                alumni: {
+                    include: {
+                        major: {
+                            include: {
+                                faculty: true,
+                            },
+                        },
+                        respondent: {
+                            select: {
+                                fullName: true,
+                                email: true,
+                            },
+                        },
+                    },
+                },
+            },
+        })
+    }
+
+    async createManagerWithPins(options = {}) {
+        const {
+            fullName,
+            email,
+            company,
+            position,
+            phoneNumber,
+            pins = [],
+        } = options
+
+        return this.prismaClient.$transaction(async (tx) => {
+            const existingEmail = await tx.respondent.findUnique({
+                where: { email },
+            })
+            if (existingEmail) {
+                throw new Error(`Email ${email} sudah digunakan`)
+            }
+
+            const respondent = await tx.respondent.create({
+                data: {
+                    fullName,
+                    email,
+                    role: 'MANAGER',
+                },
+            })
+
+            const manager = await tx.manager.create({
+                data: {
+                    company,
+                    position,
+                    phoneNumber: phoneNumber || null,
+                    respondentId: respondent.id,
+                },
+                include: {
+                    respondent: true,
+                },
+            })
+
+            await tx.pinAlumni.updateMany({
+                where: {
+                    pin: { in: pins },
+                },
+                data: {
+                    managerId: manager.id,
+                },
+            })
+
+            return manager
+        })
     }
 }
 

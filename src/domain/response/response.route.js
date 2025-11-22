@@ -1,5 +1,6 @@
 const BaseRoute = require("../../shared/base/base.route")
 const responseController = require("./response.controller")
+const responseValidation = require("./response.validation")
 const PermissionMiddleware = require("../../shared/middlewares/permission.middleware")
 
 class ResponseRoute extends BaseRoute {
@@ -55,6 +56,13 @@ class ResponseRoute extends BaseRoute {
             "exportUserSurveyResponses",
             PermissionMiddleware.authenticate,
             PermissionMiddleware.requirePermission('response.export')
+        )
+
+        this.post(
+            "/v1/responses/submit",
+            "submitResponse",
+            PermissionMiddleware.authenticate,
+            this.validation.validateBody(responseValidation.submitResponseSchema())
         )
     }
 }

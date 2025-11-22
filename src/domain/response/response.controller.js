@@ -117,6 +117,31 @@ class ResponseController extends BaseController {
             next(error)
         }
     }
+
+    async submitResponse(req, res, next) {
+        try {
+            const data = req.extract.getBody()
+            const respondentId = req.user?.id // Get from authenticated user
+
+            if (!respondentId) {
+                return res.status(401).json({
+                    success: false,
+                    message: "Unauthorized",
+                    error: { message: "User tidak terautentikasi" }
+                })
+            }
+
+            const result = await this.responseService.submitResponse({
+                ...data,
+                respondentId
+            })
+
+            return ResponseFactory.created(result).send(res)
+        } catch (error) {
+            this.logger.error(error)
+            next(error)
+        }
+    }
 }
 
 module.exports = ResponseController

@@ -98,6 +98,16 @@ class SurveyRoute extends BaseRoute {
             this.validation.validateBody(surveyValidation.createCodeQuestionSchema())
         )
 
+        // IMPORTANT: More specific routes (code-questions) must come before general routes (questions)
+        // This prevents route conflicts where Express might match the wrong route
+        // DELETE code-questions route MUST be before questions routes
+        this.delete(
+            "/v1/surveys/:surveyId/code-questions/:codeId",
+            "deleteCodeQuestion",
+            PermissionMiddleware.authenticate,
+            PermissionMiddleware.requirePermission('question.delete')
+        )
+
         this.patch(
             "/v1/surveys/:surveyId/questions/:id",
             "updateQuestion",

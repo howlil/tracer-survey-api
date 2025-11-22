@@ -1,4 +1,5 @@
 const BaseRepository = require("../../shared/base/base.repository")
+const { generatePin } = require("../../shared/utils/pin.util")
 
 class AlumniRepository extends BaseRepository {
     constructor(prisma, logger) {
@@ -8,31 +9,45 @@ class AlumniRepository extends BaseRepository {
 
     async findManyWithPagination(options = {}) {
         try {
-            const { page = 1, limit = 10, search, facultyId, majorId, degree, graduatedYear, graduatePeriode } = options
+            const { page = 1, limit = 10, search, facultyId, majorId, degree, graduatedYear, graduatePeriode, accessibleFacultyIds } = options
 
-            const where = {}
+            const filters = []
             if (search) {
-                where.OR = [
-                    { respondent: { fullName: { contains: search, mode: 'insensitive' } } },
-                    { nim: { contains: search, mode: 'insensitive' } },
-                    { respondent: { email: { contains: search, mode: 'insensitive' } } }
-                ]
-            }
-            if (facultyId) {
-                where.major = { facultyId }
+                filters.push({
+                    OR: [
+                        { respondent: { fullName: { contains: search, mode: 'insensitive' } } },
+                        { nim: { contains: search, mode: 'insensitive' } },
+                        { respondent: { email: { contains: search, mode: 'insensitive' } } }
+                    ]
+                })
             }
             if (majorId) {
-                where.majorId = majorId
+                filters.push({ majorId })
             }
             if (degree) {
-                where.degree = degree
+                filters.push({ degree })
             }
             if (graduatedYear) {
-                where.graduatedYear = graduatedYear
+                filters.push({ graduatedYear })
             }
             if (graduatePeriode) {
-                where.graduatePeriode = graduatePeriode
+                filters.push({ graduatePeriode })
             }
+
+            const majorFilter = {}
+            if (facultyId) {
+                majorFilter.facultyId = facultyId
+            } else if (accessibleFacultyIds && accessibleFacultyIds.length > 0) {
+                majorFilter.facultyId = { in: accessibleFacultyIds }
+            }
+
+            if (Object.keys(majorFilter).length > 0) {
+                filters.push({
+                    major: majorFilter
+                })
+            }
+
+            const where = filters.length > 0 ? { AND: filters } : {}
 
             // Use getAll from base repository
             const result = await this.getAll({
@@ -113,6 +128,108 @@ class AlumniRepository extends BaseRepository {
                     filteredCount: result.meta.total
                 }
             }
+        } catch (error) {
+            this.logger.error(error)
+            throw error
+        }
+    }
+
+    async findMajorWithFaculty(majorId) {
+        return this.prismaClient.major.findUnique({
+            where: { id: majorId },
+            include: {
+                faculty: {
+                    select: {
+                        id: true,
+                        facultyName: true,
+                    },
+                },
+            },
+        })
+    }
+
+    async generateUniquePin(tx, maxAttempts = 10) {
+        for (let attempt = 0; attempt < maxAttempts; attempt++) {
+            const pin = generatePin(6)
+            const existingPin = await tx.pinAlumni.findUnique({
+                where: { pin },
+            })
+            if (!existingPin) {
+                return pin
+            }
+        }
+        throw new Error('Gagal menghasilkan PIN unik')
+    }
+
+    async createAlumniWithRespondent(data) {
+        try {
+            const {
+                nim,
+                fullName,
+                email,
+                majorId,
+                degree,
+                graduatedYear,
+                graduatePeriode,
+            } = data
+
+            const result = await this.prismaClient.$transaction(async (tx) => {
+                const existingNim = await tx.alumni.findUnique({
+                    where: { nim },
+                })
+                if (existingNim) {
+                    throw new Error(`NIM ${nim} sudah terdaftar`)
+                }
+
+                const existingEmail = await tx.respondent.findUnique({
+                    where: { email },
+                })
+                if (existingEmail) {
+                    throw new Error(`Email ${email} sudah digunakan`)
+                }
+
+                const respondent = await tx.respondent.create({
+                    data: {
+                        fullName,
+                        email,
+                        role: 'ALUMNI',
+                    },
+                })
+
+                const alumni = await tx.alumni.create({
+                    data: {
+                        nim,
+                        majorId,
+                        degree,
+                        graduatedYear,
+                        graduatePeriode,
+                        respondentId: respondent.id,
+                    },
+                    include: {
+                        respondent: true,
+                        major: {
+                            include: {
+                                faculty: true,
+                            },
+                        },
+                    },
+                })
+
+                const pin = await this.generateUniquePin(tx)
+
+                await tx.pinAlumni.create({
+                    data: {
+                        pin,
+                        alumniId: alumni.id,
+                        managerId: null,
+                        pinType: 'ALUMNI',
+                    },
+                })
+
+                return alumni
+            })
+
+            return result
         } catch (error) {
             this.logger.error(error)
             throw error

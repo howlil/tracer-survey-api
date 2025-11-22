@@ -1,16 +1,15 @@
 const prisma = require("../../shared/configs/prisma.config")
 const PermissionUtil = require("../../shared/utils/permission.util")
 
-async function seedPersmission(logger) {
+async function seedPermission(logger) {
     try {
-        logger.info("'🌱 Starting permission seeding...'")
+        logger.info('🌱 Starting Permission seeding...')
 
         const permissions = PermissionUtil.generatePermision()
-
         logger.info(`📝 Found ${permissions.length} permissions to seed`)
 
-        let created = 0;
-        let existing = 0;
+        let created = 0
+        let existing = 0
 
         for (const permission of permissions) {
             const result = await prisma.permission.upsert({
@@ -27,21 +26,20 @@ async function seedPersmission(logger) {
             })
 
             if (result.createdAt.getTime() === result.updatedAt.getTime()) {
-                created++;
+                created++
             } else {
-                existing++;
+                existing++
             }
-
         }
-        logger.info(`✅ Seeding completed!`);
+
+        logger.info(`✅ Permission seeding completed! Created: ${created}, Updated: ${existing}`)
 
     } catch (error) {
+        logger.error('❌ Error seeding Permission:', error)
         throw error
-    } finally {
-        await prisma.$disconnect()
     }
 }
 
-module.exports = seedPersmission 
+module.exports = seedPermission
 
 

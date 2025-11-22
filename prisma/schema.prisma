@@ -4,7 +4,6 @@ generator client {
 
 datasource db {
   provider = "mysql"
-  url      = env("DATABASE_URL")
 }
 
 /**
@@ -104,10 +103,14 @@ model Role {
   roleName       String
   description    String?
   isSuperAdmin   Boolean          @default(false)
+  facultyId      String?
   createdAt      DateTime         @default(now())
   updatedAt      DateTime         @updatedAt
   admins         AdminRole[]
   rolePermission RolePermission[]
+  faculty        Faculty?         @relation(fields: [facultyId], references: [id])
+
+  @@index([facultyId])
 }
 
 model RolePermission {
@@ -139,7 +142,7 @@ model Permission {
 model Respondent {
   id                   String                 @id @default(uuid())
   fullName             String
-  email                String
+  email                String                 @unique
   role                 TargetRole
   alumni               Alumni?
   manager              Manager?
@@ -181,6 +184,7 @@ model Manager {
   id           String      @id @default(uuid())
   company      String
   position     String
+  phoneNumber  String?
   respondentId String      @unique
   respondent   Respondent  @relation(fields: [respondentId], references: [id])
   createdAt    DateTime    @default(now())
@@ -201,6 +205,7 @@ model Faculty {
   updatedAt   DateTime      @updatedAt
   majors      Major[]
   SurveyRules SurveyRules[]
+  roles       Role[]
 }
 
 model Major {
@@ -353,6 +358,7 @@ model Question {
   @@index([codeId])
   @@index([groupQuestionId])
   @@index([sortOrder])
+  @@index([parentId])
 }
 
 model QuestionTree {
@@ -408,6 +414,9 @@ model ResponseRespondent {
   updatedAt            DateTime               @updatedAt
   answerMultipleChoice AnswerMultipleChoice[]
   answer               Answer[]
+
+  @@index([submittedAt])
+  @@index([surveyId])
 }
 
 model AnswerMultipleChoice {

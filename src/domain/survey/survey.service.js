@@ -140,6 +140,15 @@ class SurveyService extends BaseService {
             throw error
         }
     }
+
+    async deleteCodeQuestion(surveyId, codeId) {
+        try {
+            return await this.surveyRepository.deleteCodeQuestion(surveyId, codeId)
+        } catch (error) {
+            this.logger.error(error)
+            throw error
+        }
+    }
 }
 
 module.exports = SurveyService

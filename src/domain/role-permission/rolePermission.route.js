@@ -24,15 +24,14 @@ class RolePermissionRoute extends BaseRoute {
         )
 
         this.get(
-            "/v1/roles/:id",
-            "findUnique",
-            PermissionMiddleware.authenticate,
-            PermissionMiddleware.requirePermission('role.read')
+            "/v1/roles/resources",
+            "getResources",
+            PermissionMiddleware.authenticate
         )
 
         this.get(
-            "/v1/roles/resources",
-            "getResources",
+            "/v1/roles/:id",
+            "findUnique",
             PermissionMiddleware.authenticate,
             PermissionMiddleware.requirePermission('role.read')
         )

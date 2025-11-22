@@ -117,7 +117,9 @@ class RolePermissionRepository extends BaseRepository {
                                 select: {
                                     id: true,
                                     resource: true,
-                                    action: true
+                                    action: true,
+                                    createdAt: true,
+                                    updatedAt: true
                                 }
                             }
                         }
@@ -128,9 +130,19 @@ class RolePermissionRepository extends BaseRepository {
 
             const formattedRoles = result.data.map(role => ({
                 id: role.id,
-                name: role.roleName,
+                roleName: role.roleName,
                 description: role.description,
-                permissions: this.groupPermissionsByResource(role.rolePermission)
+                isSuperAdmin: role.isSuperAdmin || false,
+                createdAt: role.createdAt,
+                updatedAt: role.updatedAt,
+                permissions: role.rolePermission.map(rp => ({
+                    id: rp.permission.id,
+                    permissionName: `${rp.permission.resource}.${rp.permission.action}`,
+                    resource: rp.permission.resource,
+                    action: rp.permission.action,
+                    createdAt: rp.permission.createdAt,
+                    updatedAt: rp.permission.updatedAt
+                }))
             }))
 
             return {
@@ -154,7 +166,9 @@ class RolePermissionRepository extends BaseRepository {
                                 select: {
                                     id: true,
                                     resource: true,
-                                    action: true
+                                    action: true,
+                                    createdAt: true,
+                                    updatedAt: true
                                 }
                             }
                         }
@@ -168,9 +182,19 @@ class RolePermissionRepository extends BaseRepository {
 
             return {
                 id: role.id,
-                name: role.roleName,
+                roleName: role.roleName,
                 description: role.description,
-                permissions: this.groupPermissionsByResource(role.rolePermission)
+                isSuperAdmin: role.isSuperAdmin || false,
+                createdAt: role.createdAt,
+                updatedAt: role.updatedAt,
+                permissions: role.rolePermission.map(rp => ({
+                    id: rp.permission.id,
+                    permissionName: `${rp.permission.resource}.${rp.permission.action}`,
+                    resource: rp.permission.resource,
+                    action: rp.permission.action,
+                    createdAt: rp.permission.createdAt,
+                    updatedAt: rp.permission.updatedAt
+                }))
             }
         } catch (error) {
             this.logger.error(error)
@@ -204,7 +228,9 @@ class RolePermissionRepository extends BaseRepository {
                                     select: {
                                         id: true,
                                         resource: true,
-                                        action: true
+                                        action: true,
+                                        createdAt: true,
+                                        updatedAt: true
                                     }
                                 }
                             }
@@ -214,9 +240,19 @@ class RolePermissionRepository extends BaseRepository {
 
                 return {
                     id: role.id,
-                    name: role.roleName,
+                    roleName: role.roleName,
                     description: role.description,
-                    permissions: this.groupPermissionsByResource(role.rolePermission)
+                    isSuperAdmin: role.isSuperAdmin || false,
+                    createdAt: role.createdAt,
+                    updatedAt: role.updatedAt,
+                    permissions: role.rolePermission.map(rp => ({
+                        id: rp.permission.id,
+                        permissionName: `${rp.permission.resource}.${rp.permission.action}`,
+                        resource: rp.permission.resource,
+                        action: rp.permission.action,
+                        createdAt: rp.permission.createdAt,
+                        updatedAt: rp.permission.updatedAt
+                    }))
                 }
             })
 
@@ -230,6 +266,12 @@ class RolePermissionRepository extends BaseRepository {
     async updateWithPermissions(options = {}) {
         try {
             const { where, roleData, permissions } = options
+
+            // Check if role exists first
+            const existingRole = await this.prisma.findUnique({ where })
+            if (!existingRole) {
+                throw new Error(`Role with id ${where.id} not found`)
+            }
 
             const result = await this.prismaClient.$transaction(async (tx) => {
                 // Update role data
@@ -275,7 +317,9 @@ class RolePermissionRepository extends BaseRepository {
                                     select: {
                                         id: true,
                                         resource: true,
-                                        action: true
+                                        action: true,
+                                        createdAt: true,
+                                        updatedAt: true
                                     }
                                 }
                             }
@@ -283,13 +327,25 @@ class RolePermissionRepository extends BaseRepository {
                     }
                 })
 
+                if (!role) {
+                    throw new Error('Role not found')
+                }
+
                 return {
                     id: role.id,
-                    name: role.roleName,
+                    roleName: role.roleName,
                     description: role.description,
-                    permissions: this.groupPermissionsByResource(role.rolePermission),
+                    isSuperAdmin: role.isSuperAdmin || false,
                     createdAt: role.createdAt,
-                    updatedAt: role.updatedAt
+                    updatedAt: role.updatedAt,
+                    permissions: role.rolePermission.map(rp => ({
+                        id: rp.permission.id,
+                        permissionName: `${rp.permission.resource}.${rp.permission.action}`,
+                        resource: rp.permission.resource,
+                        action: rp.permission.action,
+                        createdAt: rp.permission.createdAt,
+                        updatedAt: rp.permission.updatedAt
+                    }))
                 }
             })
 
@@ -375,31 +431,30 @@ class RolePermissionRepository extends BaseRepository {
     async getOrCreatePermissions(tx, permissions) {
         const permissionIds = []
 
-        for (const perm of permissions) {
-            const { resource, actions } = perm
+        for (const permString of permissions) {
+            // Split "resource.action" format
+            const [resource, action] = permString.split('.')
 
-            for (const action of actions) {
-                // Try to find existing permission
-                let permission = await tx.permission.findFirst({
-                    where: {
+            // Try to find existing permission
+            let permission = await tx.permission.findFirst({
+                where: {
+                    resource,
+                    action
+                }
+            })
+
+            // Create if not exists
+            if (!permission) {
+                permission = await tx.permission.create({
+                    data: {
+                        permissionName: `${resource}.${action}`,
                         resource,
                         action
                     }
                 })
-
-                // Create if not exists
-                if (!permission) {
-                    permission = await tx.permission.create({
-                        data: {
-                            permissionName: `${resource}:${action}`,
-                            resource,
-                            action
-                        }
-                    })
-                }
-
-                permissionIds.push(permission.id)
             }
+
+            permissionIds.push(permission.id)
         }
 
         return permissionIds

@@ -10,6 +10,8 @@ class PrismaConfig {
     }
 
     #createPrismaClient() {
+        // PrismaClient automatically reads DATABASE_URL from environment variables
+        // No need to pass url directly in constructor
         return new PrismaClient({
             log: [
                 { emit: 'event', level: 'query' },
@@ -17,13 +19,7 @@ class PrismaConfig {
                 { emit: 'event', level: 'warn' },
                 { emit: 'event', level: 'error' }
             ],
-            errorFormat: globalUtils.isDevelopment ? 'pretty' : 'colorless',
-
-            datasources : {
-                db: {
-                    url: process.env.DATABASE_URL
-                }
-            }
+            errorFormat: globalUtils.isDevelopment ? 'pretty' : 'colorless'
         });
     }
 
@@ -60,7 +56,7 @@ class PrismaConfig {
             await this.prisma.$disconnect();
         } catch (error) {
             logger.error(`Error disconnecting from the database: ${error.message}`);
-        }   
+        }
     }
 
     getClient() {

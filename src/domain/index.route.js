@@ -19,9 +19,12 @@ class IndexRoute {
         this.#app.use("/api", require("./faculty/faculty.route"))
         this.#app.use("/api", require("./major/major.route"))
         this.#app.use("/api", require("./admin/admin.route"))
+        this.#app.use("/api", require("./alumni/alumni.route"))
+        this.#app.use("/api", require("./manager/manager.route"))
         this.#app.use("/api", require("./response/response.route"))
         this.#app.use("/api", require("./email/email.route"))
         this.#app.use("/api", require("./survey/survey.route"))
+        this.#app.use("/api", require("./dashboard/dashboard.route"))
     }
 
     getRouter() {
@@ -44,11 +47,11 @@ class IndexRoute {
     static setupSwagger(app) {
         try {
             const possiblePaths = [
-                path.join(process.cwd(), 'swagger.json'), 
-                path.join(__dirname, '../../../swagger.json'), 
+                path.join(process.cwd(), 'swagger.json'),
+                path.join(__dirname, '../../../swagger.json'),
                 path.resolve(process.cwd(), 'swagger.json')
             ];
-            
+
             let swaggerJsonPath = null;
             for (const possiblePath of possiblePaths) {
                 if (fs.existsSync(possiblePath)) {
@@ -56,31 +59,31 @@ class IndexRoute {
                     break;
                 }
             }
-            
+
             if (!swaggerJsonPath) {
                 throw new Error(`Swagger file not found. Tried paths: ${possiblePaths.join(', ')}`);
             }
-            
+
             logger.info(`Loading Swagger from: ${swaggerJsonPath}`);
-            
+
             const swaggerContent = fs.readFileSync(swaggerJsonPath, 'utf8');
             const swaggerDocument = JSON.parse(swaggerContent);
             logger.info('Swagger JSON parsed successfully');
-            
+
             const swaggerServe = swaggerUi.serve;
             const swaggerSetup = swaggerUi.setup(swaggerDocument, {
                 customCss: '.swagger-ui .topbar { display: none }',
                 customSiteTitle: 'Tracer Study API Documentation',
                 customfavIcon: '/favicon.ico'
             });
-            
+
             app.use('/api-docs', ...swaggerServe, swaggerSetup);
-            
+
             app.get('/api-docs/swagger.json', (req, res) => {
                 res.setHeader('Content-Type', 'application/json');
                 res.send(swaggerDocument);
             });
-            
+
             logger.info('Swagger UI route registered at /api-docs');
             logger.info('Swagger JSON route registered at /api-docs/swagger.json');
         } catch (error) {

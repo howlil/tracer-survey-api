@@ -172,10 +172,8 @@ async function seedFacultyAndMajor(logger) {
         logger.info(`📊 Summary: ${facultyCount} Faculties, ${majorCount} Majors created`);
 
     } catch (error) {
-        logger.error('❌ Error seeding Faculty and Major:', error);
-        throw error;
-    } finally {
-        await prisma.$disconnect();
+        logger.error('❌ Error seeding Faculty and Major:', error)
+        throw error
     }
 }
 

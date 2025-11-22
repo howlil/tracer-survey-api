@@ -632,6 +632,147 @@ class ResponseRepository extends BaseRepository {
             return 0
         }
     }
+
+    async submitResponse(data) {
+        try {
+            const { surveyId, respondentId, answers } = data
+
+            // Verify survey exists
+            const survey = await this.prismaClient.survey.findUnique({
+                where: { id: surveyId }
+            })
+
+            if (!survey) {
+                throw new Error('Survey tidak ditemukan')
+            }
+
+            // Verify respondent exists
+            const respondent = await this.prismaClient.respondent.findUnique({
+                where: { id: respondentId }
+            })
+
+            if (!respondent) {
+                throw new Error('Respondent tidak ditemukan')
+            }
+
+            // Check if response already exists
+            let responseRespondent = await this.prismaClient.responseRespondent.findFirst({
+                where: {
+                    surveyId,
+                    respondentId
+                }
+            })
+
+            const result = await this.prismaClient.$transaction(async (tx) => {
+                // Create or update response
+                if (responseRespondent) {
+                    // Update existing response
+                    responseRespondent = await tx.responseRespondent.update({
+                        where: { id: responseRespondent.id },
+                        data: {
+                            submittedAt: new Date()
+                        }
+                    })
+
+                    // Delete old answers
+                    await tx.answer.deleteMany({
+                        where: { responseRespondentId: responseRespondent.id }
+                    })
+
+                    await tx.answerMultipleChoice.deleteMany({
+                        where: { responseRespondentId: responseRespondent.id }
+                    })
+                } else {
+                    // Create new response
+                    responseRespondent = await tx.responseRespondent.create({
+                        data: {
+                            surveyId,
+                            respondentId,
+                            submittedAt: new Date()
+                        }
+                    })
+                }
+
+                // Process answers
+                for (const answerData of answers) {
+                    const { questionId, answerText, answerOptionIds } = answerData
+
+                    // Verify question exists and belongs to survey
+                    const question = await tx.question.findFirst({
+                        where: {
+                            id: questionId,
+                            CodeQuestion: {
+                                surveyId
+                            }
+                        },
+                        include: {
+                            answerOptionQuestion: true
+                        }
+                    })
+
+                    if (!question) {
+                        this.logger.warn(`Question ${questionId} tidak ditemukan atau tidak termasuk dalam survey`)
+                        continue
+                    }
+
+                    // Handle text answers (essay, short_text, long_text, etc.)
+                    if (answerText !== undefined && answerText !== null && answerText !== '') {
+                        // Find answer option if it's an "other" option
+                        let answerOptionQuestionId = null
+                        if (answerOptionIds && answerOptionIds.length > 0) {
+                            // Check if one of the options is an "other" option
+                            const otherOption = question.answerOptionQuestion.find(
+                                opt => opt.otherOptionPlaceholder !== null && answerOptionIds.includes(opt.id)
+                            )
+                            if (otherOption) {
+                                answerOptionQuestionId = otherOption.id
+                            }
+                        }
+
+                        await tx.answer.create({
+                            data: {
+                                responseRespondentId: responseRespondent.id,
+                                questionId,
+                                answerText: answerText.trim(),
+                                answerOptionQuestionId
+                            }
+                        })
+                    }
+
+                    // Handle multiple choice answers
+                    if (answerOptionIds && answerOptionIds.length > 0) {
+                        // Filter out "other" options (they're handled above)
+                        const regularOptions = answerOptionIds.filter(optionId => {
+                            const option = question.answerOptionQuestion.find(opt => opt.id === optionId)
+                            return option && !option.otherOptionPlaceholder
+                        })
+
+                        if (regularOptions.length > 0) {
+                            await tx.answerMultipleChoice.createMany({
+                                data: regularOptions.map(optionId => ({
+                                    responseRespondentId: responseRespondent.id,
+                                    questionId,
+                                    answerOptionQuestionId: optionId
+                                }))
+                            })
+                        }
+                    }
+                }
+
+                return {
+                    id: responseRespondent.id,
+                    surveyId: responseRespondent.surveyId,
+                    respondentId: responseRespondent.respondentId,
+                    submittedAt: responseRespondent.submittedAt
+                }
+            })
+
+            return result
+        } catch (error) {
+            this.logger.error('Error in submitResponse:', error)
+            throw error
+        }
+    }
 }
 
 module.exports = ResponseRepository

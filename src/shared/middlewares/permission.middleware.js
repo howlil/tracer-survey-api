@@ -73,10 +73,14 @@ class PermissionMiddleware {
                     const isSuperAdmin = admin.roles.some(adminRole => adminRole.role.isSuperAdmin === true);
 
                     const permissions = new Set();
+                    const facultyAccess = new Set();
                     admin.roles.forEach(adminRole => {
                         adminRole.role.rolePermission.forEach(rp => {
                             permissions.add(rp.permission.permissionName);
                         });
+                        if (adminRole.role.facultyId) {
+                            facultyAccess.add(adminRole.role.facultyId);
+                        }
                     });
 
                     req.adminPermissions = Array.from(permissions);
@@ -89,6 +93,9 @@ class PermissionMiddleware {
                         isActive: admin.isActive,
                         isSuperAdmin: isSuperAdmin
                     };
+                    req.accessibleFacultyIds = isSuperAdmin
+                        ? null
+                        : Array.from(facultyAccess);
                 }
 
                 if (req.isSuperAdmin) {

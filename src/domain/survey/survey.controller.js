@@ -179,6 +179,17 @@ class SurveyController extends BaseController {
         }
     }
 
+    async deleteCodeQuestion(req, res, next) {
+        try {
+            const { surveyId, codeId } = req.extract.getParams(["surveyId", "codeId"])
+            await this.surveyService.deleteCodeQuestion(surveyId, codeId)
+            return ResponseFactory.deleted().send(res)
+        } catch (error) {
+            this.logger.error(error)
+            next(error)
+        }
+    }
+
     async saveBuilder(req, res, next) {
         try {
             const { surveyId } = req.extract.getParams(["surveyId"])

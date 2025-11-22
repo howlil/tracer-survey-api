@@ -120,6 +120,7 @@ class SurveyValidation {
             status: joi.string().valid('DRAFT', 'PUBLISHED', 'ARCHIVED', 'CLOSED').optional(),
             description: joi.string().max(1000).trim().optional(),
             documentUrl: joi.string().uri().allow('').optional(),
+            greetingOpening: greetingOpeningSchema.optional(),
             greatingOpening: greetingOpeningSchema.optional(),
             greetingClosing: greetingClosingSchema.optional()
         }).min(1).messages({
@@ -257,7 +258,7 @@ class SurveyValidation {
 
     static saveBuilderSchema() {
         const pageSchema = joi.object({
-            id: joi.string().required(),
+            id: joi.string().uuid().required(),
             title: joi.string().min(1).max(200).required(),
             description: joi.string().max(500).allow('').optional(),
             codeIds: joi.array().items(joi.string()).min(1).required()
@@ -269,6 +270,13 @@ class SurveyValidation {
             sortOrder: joi.number().integer().min(0).required(),
             otherOptionPlaceholder: joi.string().max(200).allow('').optional(),
             isTriggered: joi.boolean().optional()
+        })
+
+        const questionTreeSchema = joi.object({
+            answerQuestionTriggerId: joi.string().required(),
+            questionPointerToId: joi.string().uuid().required(),
+            _tempAnswerText: joi.string().optional(),
+            _tempSortOrder: joi.number().integer().optional()
         })
 
         const questionSchema = joi.object({
@@ -284,7 +292,8 @@ class SurveyValidation {
             searchplaceholder: joi.string().max(200).allow('').optional(),
             version: joi.string().optional(),
             questionCode: joi.string().optional(),
-            answerQuestion: joi.array().items(answerOptionSchema).optional()
+            answerQuestion: joi.array().items(answerOptionSchema).optional(),
+            questionTree: joi.array().items(questionTreeSchema).optional()
         })
 
         return joi.object({

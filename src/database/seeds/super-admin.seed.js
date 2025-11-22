@@ -140,10 +140,8 @@ async function seedSuperAdmin(logger) {
         }
 
     } catch (error) {
-        logger.error("❌ Error seeding Super Admin:", error)
+        logger.error('❌ Error seeding Super Admin:', error)
         throw error
-    } finally {
-        await prisma.$disconnect()
     }
 }
 

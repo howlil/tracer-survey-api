@@ -59,6 +59,15 @@ class ResponseService extends BaseService {
             throw error
         }
     }
+
+    async submitResponse(data) {
+        try {
+            return await this.responseRepository.submitResponse(data)
+        } catch (error) {
+            this.logger.error(error)
+            throw error
+        }
+    }
 }
 
 module.exports = ResponseService
