@@ -16,6 +16,14 @@ class ResponseRoute extends BaseRoute {
     }
 
     createRoute() {
+        // Specific routes must come before parameterized routes
+        this.get(
+            "/v1/responses/tracer-study/export",
+            "exportTracerStudyResponses",
+            PermissionMiddleware.authenticate,
+            PermissionMiddleware.requirePermission('response.export')
+        )
+
         this.get(
             "/v1/responses/tracer-study",
             "getTracerStudyResponses",
@@ -30,9 +38,10 @@ class ResponseRoute extends BaseRoute {
             PermissionMiddleware.requirePermission('response.read')
         )
 
+        // Specific routes must come before parameterized routes
         this.get(
-            "/v1/responses/tracer-study/export",
-            "exportTracerStudyResponses",
+            "/v1/responses/user-survey/export",
+            "exportUserSurveyResponses",
             PermissionMiddleware.authenticate,
             PermissionMiddleware.requirePermission('response.export')
         )
@@ -51,18 +60,18 @@ class ResponseRoute extends BaseRoute {
             PermissionMiddleware.requirePermission('response.read')
         )
 
-        this.get(
-            "/v1/responses/user-survey/export",
-            "exportUserSurveyResponses",
-            PermissionMiddleware.authenticate,
-            PermissionMiddleware.requirePermission('response.export')
-        )
-
         this.post(
             "/v1/responses/submit",
             "submitResponse",
             PermissionMiddleware.authenticate,
             this.validation.validateBody(responseValidation.submitResponseSchema())
+        )
+
+        this.post(
+            "/v1/responses/draft",
+            "saveDraft",
+            PermissionMiddleware.authenticate,
+            this.validation.validateBody(responseValidation.saveDraftSchema())
         )
     }
 }

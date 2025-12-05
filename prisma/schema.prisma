@@ -4,6 +4,7 @@ generator client {
 
 datasource db {
   provider = "mysql"
+  url      = env("DATABASE_URL")
 }
 
 /**
@@ -204,7 +205,6 @@ model Faculty {
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
   majors      Major[]
-  SurveyRules SurveyRules[]
   roles       Role[]
 }
 
@@ -217,17 +217,18 @@ model Major {
   faculty     Faculty       @relation(fields: [facultyId], references: [id])
   facultyId   String
   alumni      Alumni[]
-  surveyRules SurveyRules[]
 
   @@index([facultyId])
 }
 
 model Faq {
   id        String   @id @default(uuid())
-  title     String
-  link      String
+  question  String
+  answer    String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([question])
 }
 
 /**
@@ -258,18 +259,13 @@ model Survey {
 model SurveyRules {
   id        String       @id @default(uuid())
   surveyId  String
-  facultyId String
-  majorId   String?
   degree    TargetDegree
   survey    Survey       @relation(fields: [surveyId], references: [id])
-  faculty   Faculty      @relation(fields: [facultyId], references: [id])
-  major     Major?       @relation(fields: [majorId], references: [id])
   createdAt DateTime     @default(now())
   updatedAt DateTime     @updatedAt
 
   @@index([surveyId])
-  @@index([facultyId])
-  @@index([majorId])
+  @@unique([surveyId, degree])
 }
 
 /**
@@ -343,6 +339,7 @@ model Question {
   sortOrder             Int
   placeholder           String
   searchplaceholder     String
+  pageNumber            Int?                  // Nomor halaman untuk struktur data yang lebih terstruktur
   parent                Question?              @relation("QuestionToQuestion", fields: [parentId], references: [id])
   groupQuestion         GroupQuestion          @relation(fields: [groupQuestionId], references: [id])
   children              Question[]             @relation("QuestionToQuestion")
@@ -359,6 +356,7 @@ model Question {
   @@index([groupQuestionId])
   @@index([sortOrder])
   @@index([parentId])
+  @@index([pageNumber])
 }
 
 model QuestionTree {
@@ -407,7 +405,7 @@ model ResponseRespondent {
   id                   String                 @id @default(uuid())
   surveyId             String
   respondentId         String                 @unique
-  submittedAt          DateTime
+  submittedAt          DateTime?
   survey               Survey                 @relation(fields: [surveyId], references: [id])
   respondent           Respondent             @relation(fields: [respondentId], references: [id])
   createdAt            DateTime               @default(now())

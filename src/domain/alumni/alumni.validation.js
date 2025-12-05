@@ -60,6 +60,54 @@ class AlumniValidation {
                 }),
         })
     }
+
+    static updateSchema() {
+        return joi.object({
+            nim: joi.string().trim().optional().messages({
+                'string.base': 'NIM harus berupa string',
+            }),
+            fullName: joi.string().trim().min(3).max(150).optional().messages({
+                'string.min': 'Nama minimal 3 karakter',
+                'string.max': 'Nama maksimal 150 karakter',
+            }),
+            email: joi.string().email().optional().messages({
+                'string.email': 'Email harus valid',
+            }),
+            facultyId: joi.string().trim().optional().messages({
+                'string.base': 'Fakultas harus berupa string',
+            }),
+            majorId: joi.string().trim().optional().messages({
+                'string.base': 'Program studi harus berupa string',
+            }),
+            degree: joi
+                .string()
+                .valid(...degreeValues)
+                .optional()
+                .messages({
+                    'any.only': 'Jenjang tidak valid',
+                }),
+            graduatedYear: joi
+                .number()
+                .integer()
+                .min(1900)
+                .max(2100)
+                .optional()
+                .messages({
+                    'number.base': 'Tahun lulus tidak valid',
+                    'number.min': 'Tahun lulus minimal 1900',
+                    'number.max': 'Tahun lulus maksimal 2100',
+                }),
+            graduatePeriode: joi
+                .string()
+                .valid(...graduatePeriods)
+                .optional()
+                .messages({
+                    'any.only': 'Periode wisuda tidak valid',
+                }),
+        }).min(1).messages({
+            'object.min': 'Minimal satu field harus diisi untuk update'
+        })
+    }
 }
 
 module.exports = AlumniValidation

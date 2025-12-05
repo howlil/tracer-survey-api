@@ -29,6 +29,70 @@ class SurveyController extends BaseController {
         }
     }
 
+    async getPublishedSurveys(req, res, next) {
+        try {
+            const { page, limit, search, targetRole } = req.extract.getQuery([
+                "page", "limit", "search", "targetRole"
+            ])
+
+            // Only return published surveys for public access
+            const result = await this.surveyService.getSurveys({
+                page: parseInt(page) || 1,
+                limit: parseInt(limit) || 10,
+                search,
+                status: 'PUBLISHED', // Force status to PUBLISHED
+                targetRole
+            })
+
+            return ResponseFactory.get(result).send(res)
+        } catch (error) {
+            this.logger.error(error)
+            next(error)
+        }
+    }
+
+    async getPublishedSurveyById(req, res, next) {
+        try {
+            const { id } = req.extract.getParams(["id"])
+            const result = await this.surveyService.getSurveyById(id)
+            
+            // Only return if survey is published
+            if (result.status !== 'PUBLISHED') {
+                return res.status(404).json({
+                    success: false,
+                    message: 'Survey not found'
+                })
+            }
+
+            return ResponseFactory.get(result).send(res)
+        } catch (error) {
+            this.logger.error(error)
+            next(error)
+        }
+    }
+
+    async getPublishedSurveyQuestions(req, res, next) {
+        try {
+            const { surveyId } = req.extract.getParams(["surveyId"])
+            const { codeId } = req.extract.getQuery(["codeId"])
+            
+            // First check if survey exists and is published
+            const survey = await this.surveyService.getSurveyById(surveyId)
+            if (survey.status !== 'PUBLISHED') {
+                return res.status(404).json({
+                    success: false,
+                    message: 'Survey not found'
+                })
+            }
+
+            const result = await this.surveyService.getSurveyQuestions(surveyId, codeId)
+            return ResponseFactory.get(result).send(res)
+        } catch (error) {
+            this.logger.error(error)
+            next(error)
+        }
+    }
+
     async getSurveyById(req, res, next) {
         try {
             const { id } = req.extract.getParams(["id"])

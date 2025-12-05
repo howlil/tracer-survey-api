@@ -40,9 +40,9 @@ class DatabaseSeeder {
 // 3. Super Admin (membutuhkan permission dan role)
 // 4. Survey (membutuhkan faculty dan major untuk survey rules)
 const seeder = new DatabaseSeeder([
-    // permissionSeed,
-    // facultyMajorSeed,
-    // superAdminSeed,
+    permissionSeed,
+    facultyMajorSeed,
+    superAdminSeed,
     surveySeed
 ])
 

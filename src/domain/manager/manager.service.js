@@ -47,6 +47,28 @@ class ManagerService extends BaseService {
         }
     }
 
+    async getById(managerId, context = {}) {
+        try {
+            this.logger.info('[getById] Called with managerId:', managerId)
+            this.logger.info('[getById] managerId type:', typeof managerId)
+            
+            const manager = await this.managerRepository.findByIdWithAlumni(managerId)
+            
+            this.logger.info('[getById] Repository returned:', manager ? 'Found' : 'Not found')
+            
+            if (!manager) {
+                throw new ErrorHttp(404, 'Manager tidak ditemukan')
+            }
+
+            return manager
+        } catch (error) {
+            this.logger.error('[getById] Error:', error)
+            this.logger.error('[getById] Error message:', error.message)
+            this.logger.error('[getById] Error stack:', error.stack)
+            throw error
+        }
+    }
+
     async createManager(payload, context) {
         try {
             const {
@@ -68,22 +90,27 @@ class ManagerService extends BaseService {
                 throw new ErrorHttp(400, 'PIN alumni tidak valid')
             }
 
+            // Validate that PINs exist and are alumni PINs
             const pinRecords = await this.managerRepository.findPinsWithAlumni(uniquePins)
             if (pinRecords.length !== uniquePins.length) {
                 throw new ErrorHttp(400, 'Beberapa PIN alumni tidak ditemukan')
             }
 
-            const alreadyUsed = pinRecords.find((record) => record.managerId)
-            if (alreadyUsed) {
-                throw new ErrorHttp(400, `PIN ${alreadyUsed.pin} sudah terhubung dengan manager lain`)
+            // Check if PINs are valid alumni PINs (pinType = 'ALUMNI')
+            const invalidPins = pinRecords.filter((record) => record.pinType !== 'ALUMNI')
+            if (invalidPins.length > 0) {
+                throw new ErrorHttp(400, `Beberapa PIN bukan PIN alumni: ${invalidPins.map(p => p.pin).join(', ')}`)
             }
+
+            // Note: We no longer check if PIN is already used by manager
+            // because we will generate new PINs for manager (user survey)
 
             for (const record of pinRecords) {
                 const facultyId = record.alumni?.major?.facultyId
                 assertFacultyAccess(context.req, facultyId, 'alumni')
             }
 
-            const manager = await this.managerRepository.createManagerWithPins({
+            const result = await this.managerRepository.createManagerWithPins({
                 fullName,
                 email,
                 company,
@@ -93,8 +120,9 @@ class ManagerService extends BaseService {
             })
 
             return {
-                manager,
-                linkedPins: pinRecords.map((record) => ({
+                manager: result,
+                generatedPins: result.generatedPins || [], // PIN baru yang di-generate untuk user survey
+                alumniPins: pinRecords.map((record) => ({
                     pin: record.pin,
                     alumniId: record.alumniId,
                     alumniName: record.alumni?.respondent?.fullName,
@@ -155,6 +183,61 @@ class ManagerService extends BaseService {
         }
 
         return summary
+    }
+
+    /**
+     * Generate managers from tracer study responses
+     * Criteria:
+     * - Status bekerja = "sudah bekerja"
+     * - Completion = 100%
+     * - Belum punya manager record
+     */
+    async generateManagersFromTracerStudy(context) {
+        try {
+            const eligibleResponses = await this.managerRepository.getEligibleResponsesForManager()
+
+            const summary = {
+                total: eligibleResponses.length,
+                success: 0,
+                failed: 0,
+                errors: [],
+            }
+
+            for (const response of eligibleResponses) {
+                try {
+                    // Extract manager data from response
+                    const managerData = await this.managerRepository.extractManagerDataFromResponse(response.id)
+
+                    if (!managerData) {
+                        throw new Error('Gagal mengekstrak data manager dari response')
+                    }
+
+                    if (!managerData.company || !managerData.position) {
+                        throw new Error('Data perusahaan atau posisi tidak lengkap')
+                    }
+
+                    if (!managerData.managerName || !managerData.managerEmail) {
+                        throw new Error('Data nama dan email atasan/manager tidak lengkap')
+                    }
+
+                    // Create manager
+                    await this.managerRepository.createManagerFromResponse(response, managerData)
+                    summary.success += 1
+                } catch (error) {
+                    summary.failed += 1
+                    summary.errors.push({
+                        responseId: response.id,
+                        respondentName: response.respondent.fullName,
+                        message: error.message || 'Gagal memproses response',
+                    })
+                }
+            }
+
+            return summary
+        } catch (error) {
+            this.logger.error(error)
+            throw error
+        }
     }
 }
 

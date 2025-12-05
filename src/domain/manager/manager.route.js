@@ -24,6 +24,7 @@ class ManagerRoute extends BaseRoute {
             PermissionMiddleware.requirePermission('respondent.read')
         )
 
+        // Specific routes must come before parameterized routes
         this.get(
             "/v1/managers/companies",
             "getCompanies",
@@ -45,6 +46,14 @@ class ManagerRoute extends BaseRoute {
             PermissionMiddleware.requirePermission('respondent.read')
         )
 
+        // Parameterized route must come last (after all specific routes)
+        this.get(
+            "/v1/managers/:id",
+            "findById",
+            PermissionMiddleware.authenticate,
+            PermissionMiddleware.requirePermission('respondent.read')
+        )
+
         this.post(
             "/v1/managers",
             "createManual",
@@ -59,6 +68,13 @@ class ManagerRoute extends BaseRoute {
             PermissionMiddleware.authenticate,
             PermissionMiddleware.requirePermission('respondent.import'),
             upload.single('file')
+        )
+
+        this.post(
+            "/v1/managers/generate-from-tracer-study",
+            "generateFromTracerStudy",
+            PermissionMiddleware.authenticate,
+            PermissionMiddleware.requirePermission('respondent.create')
         )
     }
 }

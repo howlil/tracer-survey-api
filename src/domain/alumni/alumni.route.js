@@ -46,6 +46,20 @@ class AlumniRoute extends BaseRoute {
             PermissionMiddleware.requirePermission('respondent.import'),
             upload.single('file')
         )
+
+        this.patch(
+            "/v1/alumni/:id",
+            "update",
+            PermissionMiddleware.authenticate,
+            PermissionMiddleware.requirePermission('respondent.update'),
+            this.validation.validateBody(AlumniValidation.updateSchema())
+        )
+
+        this.get(
+            "/v1/alumni/profile/me",
+            "getCurrentProfile",
+            PermissionMiddleware.authenticate
+        )
     }
 }
 

@@ -28,6 +28,13 @@ class AdminValidation {
                     'string.email': 'Email harus valid',
                     'any.required': 'Email wajib diisi'
                 }),
+            password: joi.string()
+                .min(8)
+                .required()
+                .messages({
+                    'string.min': 'Password minimal 8 karakter',
+                    'any.required': 'Password wajib diisi'
+                }),
             isActive: joi.boolean()
                 .optional()
                 .default(true),

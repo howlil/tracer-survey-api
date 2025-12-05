@@ -132,9 +132,30 @@ async function seedFacultyAndMajor(logger) {
     try {
         logger.info('🌱 Starting Faculty and Major seeding...');
 
-        // Clear existing data
+        // Clear existing data (harus menghapus yang reference dulu)
+        // Urutan: Hapus data yang mereferensikan Major dan Faculty terlebih dahulu
+        
+        // 1. Hapus PinAlumni yang reference ke Alumni
+        await prisma.pinAlumni.deleteMany();
+        
+        // 2. Hapus Alumni yang reference ke Major
+        await prisma.alumni.deleteMany();
+        
+        // 3. Hapus Major
         await prisma.major.deleteMany();
+        
+        // 4. Hapus Role yang reference ke faculty
+        await prisma.role.updateMany({
+            where: { facultyId: { not: null } },
+            data: { facultyId: null }
+        });
+        
+        // 5. Hapus SurveyRules yang reference ke faculty (hapus semua karena akan di-reseed)
+        await prisma.surveyRules.deleteMany();
+        
+        // 6. Hapus Faculty
         await prisma.faculty.deleteMany();
+        
         logger.info('✅ Cleared existing Faculty and Major data');
 
         let facultyCount = 0;

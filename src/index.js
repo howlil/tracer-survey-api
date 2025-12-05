@@ -1,5 +1,5 @@
 const express = require('express');
-require('dotenv').config();
+require('dotenv').config({ override: false });
 const errorMiddleware = require('./shared/middlewares/error.middleware');
 const httpMiddleware = require("./shared/middlewares/http.middleware")
 const securityMiddleware = require("./shared/middlewares/security.middleware")

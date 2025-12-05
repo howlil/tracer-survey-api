@@ -117,10 +117,7 @@ class SurveyRepository extends BaseRepository {
                     where: { surveyId: { in: surveyIds } },
                     select: {
                         surveyId: true,
-                        code: true,
-                        _count: {
-                            select: { Question: true }
-                        }
+                        code: true
                     }
                 }),
                 this.prismaClient.responseRespondent.groupBy({
@@ -135,11 +132,31 @@ class SurveyRepository extends BaseRepository {
                 })
             ])
 
+            // Count only parent questions (children are part of parent, e.g., rating items)
             const questionCountMap = new Map()
-            codeQuestions.forEach(cq => {
-                const current = questionCountMap.get(cq.surveyId) || 0
-                questionCountMap.set(cq.surveyId, current + cq._count.Question)
-            })
+            if (codeQuestions.length > 0) {
+                const codeIds = codeQuestions.map(cq => cq.code)
+                const parentQuestionCounts = await this.prismaClient.question.groupBy({
+                    by: ['codeId'],
+                    where: {
+                        codeId: { in: codeIds },
+                        parentId: null // Only count parent questions
+                    },
+                    _count: { id: true }
+                })
+
+                // Map question counts by surveyId
+                const codeToSurveyId = new Map(codeQuestions.map(cq => [cq.code, cq.surveyId]))
+                parentQuestionCounts.forEach(pqc => {
+                    const surveyId = codeToSurveyId.get(pqc.codeId)
+                    if (surveyId) {
+                        const current = questionCountMap.get(surveyId) || 0
+                        questionCountMap.set(surveyId, current + pqc._count.id)
+                    }
+                })
+            }
+
+            this.logger.info(`[getSurveys] Question counts calculated: ${JSON.stringify(Array.from(questionCountMap.entries()))}`)
 
             const responseCountMap = new Map(responseCounts.map(rc => [rc.surveyId, rc._count.surveyId]))
             const rulesCountMap = new Map(rulesCounts.map(rc => [rc.surveyId, rc._count.surveyId]))
@@ -173,16 +190,7 @@ class SurveyRepository extends BaseRepository {
             const survey = await this.prisma.findUnique({
                 where: { id },
                 include: {
-                    surveyRules: {
-                        include: {
-                            faculty: true,
-                            major: {
-                                include: {
-                                    faculty: true
-                                }
-                            }
-                        }
-                    },
+                    surveyRules: true,
                     CodeQuestion: {
                         include: {
                             Question: {
@@ -208,7 +216,8 @@ class SurveyRepository extends BaseRepository {
                     where: {
                         codeId: {
                             in: survey.CodeQuestion.map(cq => cq.code)
-                        }
+                        },
+                        parentId: null // Only count parent questions
                     }
                 }),
                 this.prismaClient.responseRespondent.count({
@@ -216,22 +225,14 @@ class SurveyRepository extends BaseRepository {
                 })
             ])
 
+            this.logger.info(`[getSurveyById] SurveyId: ${id}, Question Count: ${questionCount}, CodeIds: ${JSON.stringify(survey.CodeQuestion.map(cq => cq.code))}`)
+
             const name = survey.greetingOpening?.title || survey.description || 'Survey'
 
-            const surveyRulesWithMajor = survey.surveyRules.map(rule => ({
+            const surveyRulesFormatted = survey.surveyRules.map(rule => ({
                 id: rule.id,
                 surveyId: rule.surveyId,
-                facultyId: rule.facultyId,
-                majorId: rule.majorId,
                 degree: rule.degree,
-                major: rule.major ? {
-                    id: rule.major.id,
-                    majorName: rule.major.majorName,
-                    faculty: {
-                        id: rule.major.faculty.id,
-                        facultyName: rule.major.faculty.facultyName
-                    }
-                } : null,
                 createdAt: rule.createdAt,
                 updatedAt: rule.updatedAt
             }))
@@ -245,7 +246,7 @@ class SurveyRepository extends BaseRepository {
                 documentUrl: survey.documentUrl,
                 greetingOpening: survey.greetingOpening,
                 greetingClosing: survey.greetingClosing,
-                surveyRules: surveyRulesWithMajor,
+                surveyRules: surveyRulesFormatted,
                 questionCount,
                 responseCount,
                 createdAt: survey.createdAt,
@@ -413,13 +414,15 @@ class SurveyRepository extends BaseRepository {
 
     async deleteSurvey(id) {
         try {
+            const ErrorHttp = require("../../shared/http/error.http")
+            
             // Check if survey exists
             const survey = await this.prisma.findUnique({
                 where: { id }
             })
 
             if (!survey) {
-                throw new Error("Survey not found")
+                throw new ErrorHttp(404, "Survey not found")
             }
 
             // Check if survey has responses using count for better performance
@@ -428,7 +431,7 @@ class SurveyRepository extends BaseRepository {
             })
 
             if (responseCount > 0) {
-                throw new Error("Cannot delete survey that has responses. Survey dengan response tidak dapat dihapus.")
+                throw new ErrorHttp(400, "Cannot delete survey that has responses. Survey dengan response tidak dapat dihapus.")
             }
 
             // Delete all related data in transaction
@@ -525,31 +528,13 @@ class SurveyRepository extends BaseRepository {
         try {
             const rules = await this.prismaClient.surveyRules.findMany({
                 where: { surveyId },
-                include: {
-                    faculty: true,
-                    major: {
-                        include: {
-                            faculty: true
-                        }
-                    }
-                },
                 orderBy: { createdAt: 'desc' }
             })
 
             return rules.map(rule => ({
                 id: rule.id,
                 surveyId: rule.surveyId,
-                facultyId: rule.facultyId,
-                majorId: rule.majorId,
                 degree: rule.degree,
-                major: rule.major ? {
-                    id: rule.major.id,
-                    majorName: rule.major.majorName,
-                    faculty: {
-                        id: rule.major.faculty.id,
-                        facultyName: rule.major.faculty.facultyName
-                    }
-                } : null,
                 createdAt: rule.createdAt,
                 updatedAt: rule.updatedAt
             }))
@@ -570,62 +555,30 @@ class SurveyRepository extends BaseRepository {
                 throw new Error("Survey not found")
             }
 
-            // Validate faculty exists
-            const faculty = await this.prismaClient.faculty.findUnique({
-                where: { id: data.facultyId }
+            // Check for duplicate rule (same degree for same survey)
+            const existingRule = await this.prismaClient.surveyRules.findFirst({
+                where: {
+                    surveyId,
+                    degree: data.degree
+                }
             })
 
-            if (!faculty) {
-                throw new Error("Faculty not found")
-            }
-
-            // Validate major if provided
-            if (data.majorId) {
-                const major = await this.prismaClient.major.findUnique({
-                    where: { id: data.majorId },
-                    include: { faculty: true }
-                })
-
-                if (!major) {
-                    throw new Error("Major not found")
-                }
-
-                if (major.facultyId !== data.facultyId) {
-                    throw new Error("Major does not belong to the specified faculty")
-                }
+            if (existingRule) {
+                throw new Error(`Rule untuk tingkat pendidikan ${data.degree} sudah ada`)
             }
 
             // Create rule
             const rule = await this.prismaClient.surveyRules.create({
                 data: {
                     surveyId,
-                    facultyId: data.facultyId,
-                    majorId: data.majorId || null,
                     degree: data.degree
-                },
-                include: {
-                    major: {
-                        include: {
-                            faculty: true
-                        }
-                    }
                 }
             })
 
             return {
                 id: rule.id,
                 surveyId: rule.surveyId,
-                facultyId: rule.facultyId,
-                majorId: rule.majorId,
                 degree: rule.degree,
-                major: rule.major ? {
-                    id: rule.major.id,
-                    majorName: rule.major.majorName,
-                    faculty: {
-                        id: rule.major.faculty.id,
-                        facultyName: rule.major.faculty.facultyName
-                    }
-                } : null,
                 createdAt: rule.createdAt,
                 updatedAt: rule.updatedAt
             }
@@ -646,66 +599,34 @@ class SurveyRepository extends BaseRepository {
                 throw new Error("Survey rule not found")
             }
 
-            // Validate faculty if provided
-            if (data.facultyId) {
-                const faculty = await this.prismaClient.faculty.findUnique({
-                    where: { id: data.facultyId }
+            // Check for duplicate rule if degree is being updated
+            if (data.degree && data.degree !== rule.degree) {
+                const existingRule = await this.prismaClient.surveyRules.findFirst({
+                    where: {
+                        surveyId,
+                        degree: data.degree,
+                        id: { not: id }
+                    }
                 })
 
-                if (!faculty) {
-                    throw new Error("Faculty not found")
-                }
-            }
-
-            // Validate major if provided
-            if (data.majorId) {
-                const major = await this.prismaClient.major.findUnique({
-                    where: { id: data.majorId },
-                    include: { faculty: true }
-                })
-
-                if (!major) {
-                    throw new Error("Major not found")
-                }
-
-                const facultyId = data.facultyId || rule.facultyId
-                if (major.facultyId !== facultyId) {
-                    throw new Error("Major does not belong to the specified faculty")
+                if (existingRule) {
+                    throw new Error(`Rule untuk tingkat pendidikan ${data.degree} sudah ada`)
                 }
             }
 
             // Update rule
             const updateData = {}
-            if (data.facultyId) updateData.facultyId = data.facultyId
-            if (data.majorId !== undefined) updateData.majorId = data.majorId
             if (data.degree) updateData.degree = data.degree
 
             const updatedRule = await this.prismaClient.surveyRules.update({
                 where: { id },
-                data: updateData,
-                include: {
-                    major: {
-                        include: {
-                            faculty: true
-                        }
-                    }
-                }
+                data: updateData
             })
 
             return {
                 id: updatedRule.id,
                 surveyId: updatedRule.surveyId,
-                facultyId: updatedRule.facultyId,
-                majorId: updatedRule.majorId,
                 degree: updatedRule.degree,
-                major: updatedRule.major ? {
-                    id: updatedRule.major.id,
-                    majorName: updatedRule.major.majorName,
-                    faculty: {
-                        id: updatedRule.major.faculty.id,
-                        facultyName: updatedRule.major.faculty.facultyName
-                    }
-                } : null,
                 createdAt: updatedRule.createdAt,
                 updatedAt: updatedRule.updatedAt
             }
@@ -765,6 +686,17 @@ class SurveyRepository extends BaseRepository {
                                     }
                                 },
                                 orderBy: { sortOrder: 'asc' }
+                            },
+                            questionTreeAsTrigger: {
+                                include: {
+                                    answerQuestionTrigger: true,
+                                    questionPointerTo: {
+                                        select: {
+                                            id: true,
+                                            questionText: true
+                                        }
+                                    }
+                                }
                             }
                         },
                         orderBy: { sortOrder: 'asc' }
@@ -773,40 +705,156 @@ class SurveyRepository extends BaseRepository {
             })
 
             // Format response
-            const formattedCodeQuestions = codeQuestions.map(cq => ({
-                code: cq.code,
-                questions: cq.Question.map(q => ({
-                    id: q.id,
-                    parentId: q.parentId,
-                    codeId: q.codeId,
-                    groupQuestionId: q.groupQuestionId,
-                    questionText: q.questionText,
-                    questionType: q.questionType,
-                    isRequired: q.isRequired,
-                    sortOrder: q.sortOrder,
-                    placeholder: q.placeholder,
-                    searchplaceholder: q.searchplaceholder,
-                    answerQuestion: q.answerQuestion.map(ao => ({
-                        id: ao.id,
-                        answerText: ao.answerText,
-                        sortOrder: ao.sortOrder,
-                        otherOptionPlaceholder: ao.otherOptionPlaceholder,
-                        isTriggered: ao.isTriggered
-                    })),
-                    children: q.children.map(child => ({
-                        id: child.id,
-                        questionText: child.questionText,
-                        questionType: child.questionType,
-                        sortOrder: child.sortOrder
-                    }))
-                }))
-            }))
+            // First, collect all questions (parents + children) to avoid duplicates
+            const allQuestionsMap = new Map()
+            
+            codeQuestions.forEach(cq => {
+                cq.Question.forEach(q => {
+                    // Add parent question
+                    if (!allQuestionsMap.has(q.id)) {
+                        // Map questionTreeAsTrigger to questionTree format
+                        const questionTree = (q.questionTreeAsTrigger || []).map(tree => ({
+                            answerQuestionTriggerId: tree.answerQuestionTriggerId,
+                            questionPointerToId: tree.questionPointerToId
+                        }))
+                        
+                        allQuestionsMap.set(q.id, {
+                            id: q.id,
+                            parentId: q.parentId,
+                            codeId: q.codeId,
+                            groupQuestionId: q.groupQuestionId,
+                            questionText: q.questionText,
+                            questionType: q.questionType,
+                            isRequired: q.isRequired,
+                            sortOrder: q.sortOrder,
+                            placeholder: q.placeholder,
+                            searchplaceholder: q.searchplaceholder,
+                            questionCode: cq.code,
+                            pageNumber: q.pageNumber || null, // Include pageNumber from database
+                            answerQuestion: q.answerQuestion.map(ao => ({
+                                id: ao.id,
+                                answerText: ao.answerText,
+                                sortOrder: ao.sortOrder,
+                                otherOptionPlaceholder: ao.otherOptionPlaceholder,
+                                isTriggered: ao.isTriggered
+                            })),
+                            questionTree: questionTree.length > 0 ? questionTree : undefined, // Include questionTree if exists
+                            children: [] // Will be populated below
+                        })
+                    }
+                    
+                    // Add children questions to map and to parent's children array
+                    q.children.forEach(child => {
+                        if (!allQuestionsMap.has(child.id)) {
+                            // Child questions use parent's pageNumber if not set
+                            const childPageNumber = child.pageNumber || q.pageNumber || null
+                            allQuestionsMap.set(child.id, {
+                                id: child.id,
+                                parentId: child.parentId || q.id,
+                                codeId: child.codeId || q.codeId,
+                                groupQuestionId: child.groupQuestionId || q.groupQuestionId,
+                                questionText: child.questionText,
+                                questionType: child.questionType,
+                                isRequired: child.isRequired || false,
+                                sortOrder: child.sortOrder,
+                                placeholder: child.placeholder,
+                                searchplaceholder: child.searchplaceholder,
+                                questionCode: cq.code,
+                                pageNumber: childPageNumber, // Use parent's pageNumber if not set
+                                answerQuestion: child.answerQuestion ? child.answerQuestion.map(ao => ({
+                                    id: ao.id,
+                                    answerText: ao.answerText,
+                                    sortOrder: ao.sortOrder,
+                                    otherOptionPlaceholder: ao.otherOptionPlaceholder,
+                                    isTriggered: ao.isTriggered
+                                })) : [],
+                                children: []
+                            })
+                        }
+                        
+                        // Add to parent's children array (metadata only)
+                        const parentQuestion = allQuestionsMap.get(q.id)
+                        if (parentQuestion) {
+                            parentQuestion.children.push({
+                                id: child.id,
+                                questionText: child.questionText,
+                                questionType: child.questionType,
+                                sortOrder: child.sortOrder
+                            })
+                        }
+                    })
+                })
+            })
+            
+            // Group questions back by code (for backward compatibility)
+            const formattedCodeQuestions = codeQuestions.map(cq => {
+                const codeQuestions = []
+                cq.Question.forEach(q => {
+                    const questionData = allQuestionsMap.get(q.id)
+                    if (questionData) {
+                        codeQuestions.push(questionData)
+                    }
+                })
+                
+                return {
+                    code: cq.code,
+                    questions: codeQuestions
+                }
+            })
 
-            // Note: pages structure is not stored in DB, it's metadata
-            // Can be stored as JSON or retrieved from separate table if needed
+            // Generate pages from pageNumber (from database) instead of codeQuestion
+            // Group all questions by pageNumber
+            const questionsByPageNumber = new Map()
+            Array.from(allQuestionsMap.values()).forEach(q => {
+                const pageNum = q.pageNumber || 1
+                if (!questionsByPageNumber.has(pageNum)) {
+                    questionsByPageNumber.set(pageNum, [])
+                }
+                questionsByPageNumber.get(pageNum).push(q)
+            })
+
+            // Create pages from pageNumber groups
+            const pageNumbers = Array.from(questionsByPageNumber.keys()).sort((a, b) => a - b)
+            const pages = pageNumbers.map((pageNum) => {
+                // Only get parent question IDs (questions without parentId or with null parentId)
+                const pageQuestions = questionsByPageNumber.get(pageNum) || []
+                const questionIds = pageQuestions
+                    .filter(q => !q.parentId)
+                    .sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0))
+                    .map(q => q.id)
+
+                // Extract prefix from first question's codeId for description (e.g., "A1-tracer..." -> "A")
+                const firstQuestion = pageQuestions.find(q => !q.parentId)
+                let codePrefix = ''
+                if (firstQuestion && firstQuestion.codeId) {
+                    // Extract prefix from codeId (e.g., "A1-tracer-study-alumni-2024" -> "A")
+                    const match = firstQuestion.codeId.match(/^([A-Z])/)
+                    codePrefix = match ? match[1] : ''
+                }
+
+                return {
+                    page: pageNum,
+                    title: `Halaman ${pageNum}`,
+                    description: codePrefix ? `Pertanyaan ${codePrefix}` : `Halaman ${pageNum}`,
+                    codeId: codePrefix, // Use prefix instead of full code
+                    questionIds: questionIds
+                }
+            })
+            
+            // Flatten all questions (parents + children) for frontend
+            // pageNumber is already set from database
+            const allQuestionsFlat = Array.from(allQuestionsMap.values()).map(q => {
+                return {
+                    ...q,
+                    pageNumber: q.pageNumber || 1, // Use pageNumber from database, fallback to 1
+                    questionTree: q.questionTree || undefined // Include questionTree if exists
+                }
+            })
+
             return {
                 codeQuestions: formattedCodeQuestions,
-                pages: [] // Will be populated from builder save if stored
+                pages: pages,
+                questions: allQuestionsFlat // Include all questions (parents + children) for frontend
             }
         } catch (error) {
             this.logger.error(error)
@@ -1103,8 +1151,16 @@ class SurveyRepository extends BaseRepository {
 
             // Use transaction to ensure data consistency
             await this.prismaClient.$transaction(async (tx) => {
+                // Separate parent and child questions
+                // Process child questions first, then parent questions
+                const parentQuestions = data.questions.filter(q => !q.parentId)
+                const childQuestions = data.questions.filter(q => q.parentId)
+                
+                // Process all questions (children first, then parents)
+                const allQuestionsToProcess = [...childQuestions, ...parentQuestions]
+                
                 // Process questions
-                for (const questionData of data.questions) {
+                for (const questionData of allQuestionsToProcess) {
                     // Create or update CodeQuestion if needed
                     const codeQuestion = await tx.codeQuestion.upsert({
                         where: { code: questionData.codeId },
@@ -1203,14 +1259,64 @@ class SurveyRepository extends BaseRepository {
                                     .map(o => o.id)
                             )
 
-                            // Delete options that are not in incoming data
-                            const toDelete = existingOptions.filter(o => !incomingOptionIds.has(o.id))
-                            if (toDelete.length > 0) {
-                                await tx.answerOptionQuestion.deleteMany({
-                                    where: {
-                                        id: { in: toDelete.map(o => o.id) }
+                            // Match incoming options with existing options
+                            // First by ID, then by answerText + sortOrder if ID not provided
+                            const matchedExistingIds = new Set()
+                            for (const incomingOpt of questionData.answerQuestion) {
+                                if (incomingOpt.id && existingOptionIds.has(incomingOpt.id)) {
+                                    // Matched by ID
+                                    matchedExistingIds.add(incomingOpt.id)
+                                } else if (!incomingOpt.id) {
+                                    // No ID provided, try to match by answerText + sortOrder
+                                    const matched = existingOptions.find(
+                                        eo => eo.answerText === incomingOpt.answerText && 
+                                              eo.sortOrder === incomingOpt.sortOrder
+                                    )
+                                    if (matched) {
+                                        matchedExistingIds.add(matched.id)
+                                        // Update the incoming option to include the matched ID
+                                        incomingOpt.id = matched.id
                                     }
-                                })
+                                }
+                            }
+
+                            // Delete options that are not matched AND not used in QuestionTree/Answer
+                            const toDelete = existingOptions.filter(o => !matchedExistingIds.has(o.id))
+                            if (toDelete.length > 0) {
+                                // Check which options are safe to delete (not used in QuestionTree or Answer)
+                                const safeToDelete = []
+                                for (const option of toDelete) {
+                                    // Check if used in QuestionTree
+                                    const usedInTree = await tx.questionTree.findFirst({
+                                        where: { answerQuestionTriggerId: option.id }
+                                    })
+                                    
+                                    // Check if used in Answer
+                                    const usedInAnswer = await tx.answer.findFirst({
+                                        where: { answerOptionQuestionId: option.id }
+                                    })
+                                    
+                                    // Check if used in AnswerMultipleChoice
+                                    const usedInMultipleChoice = await tx.answerMultipleChoice.findFirst({
+                                        where: { answerOptionQuestionId: option.id }
+                                    })
+                                    
+                                    // Only delete if not used anywhere
+                                    if (!usedInTree && !usedInAnswer && !usedInMultipleChoice) {
+                                        safeToDelete.push(option.id)
+                                    } else {
+                                        // Log warning but don't delete
+                                        this.logger.warn(`Cannot delete answerOptionQuestion ${option.id} because it is used in QuestionTree, Answer, or AnswerMultipleChoice`)
+                                    }
+                                }
+                                
+                                if (safeToDelete.length > 0) {
+                                    await tx.answerOptionQuestion.deleteMany({
+                                        where: {
+                                            id: { in: safeToDelete }
+                                        }
+                                    })
+                                }
                             }
 
                             // Update or create options
@@ -1245,54 +1351,47 @@ class SurveyRepository extends BaseRepository {
                             }
                         } else {
                             // Delete all if no answerQuestion provided
-                            await tx.answerOptionQuestion.deleteMany({
+                            // BUT: Check if any options are used before deleting
+                            const existingOptions = await tx.answerOptionQuestion.findMany({
                                 where: { questionId: questionData.id }
                             })
-                        }
-
-                        // Handle question tree
-                        if (questionData.questionTree && questionData.questionTree.length > 0) {
-                            // Delete existing question trees for this question
-                            await tx.questionTree.deleteMany({
-                                where: { questionTriggerId: questionData.id }
-                            })
-
-                            // Get all answer options for this question to map questionTree
-                            const answerOptions = await tx.answerOptionQuestion.findMany({
-                                where: { questionId: questionData.id }
-                            })
-
-                            // Create new question trees
-                            for (const treeData of questionData.questionTree) {
-                                let answerOptionId = treeData.answerQuestionTriggerId
-
-                                // If answerQuestionTriggerId is not a UUID, map it using answerText and sortOrder
-                                const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
-                                if (!uuidRegex.test(answerOptionId) && treeData._tempAnswerText !== undefined && treeData._tempSortOrder !== undefined) {
-                                    const mappedOption = answerOptions.find(
-                                        opt => opt.answerText === treeData._tempAnswerText && opt.sortOrder === treeData._tempSortOrder
-                                    )
-                                    if (mappedOption) {
-                                        answerOptionId = mappedOption.id
-                                    } else {
-                                        continue // Skip if option not found
-                                    }
+                            
+                            const safeToDelete = []
+                            for (const option of existingOptions) {
+                                // Check if used in QuestionTree
+                                const usedInTree = await tx.questionTree.findFirst({
+                                    where: { answerQuestionTriggerId: option.id }
+                                })
+                                
+                                // Check if used in Answer
+                                const usedInAnswer = await tx.answer.findFirst({
+                                    where: { answerOptionQuestionId: option.id }
+                                })
+                                
+                                // Check if used in AnswerMultipleChoice
+                                const usedInMultipleChoice = await tx.answerMultipleChoice.findFirst({
+                                    where: { answerOptionQuestionId: option.id }
+                                })
+                                
+                                // Only delete if not used anywhere
+                                if (!usedInTree && !usedInAnswer && !usedInMultipleChoice) {
+                                    safeToDelete.push(option.id)
+                                } else {
+                                    this.logger.warn(`Cannot delete answerOptionQuestion ${option.id} because it is used in QuestionTree, Answer, or AnswerMultipleChoice`)
                                 }
-
-                                await tx.questionTree.create({
-                                    data: {
-                                        questionTriggerId: questionData.id,
-                                        answerQuestionTriggerId: answerOptionId,
-                                        questionPointerToId: treeData.questionPointerToId
+                            }
+                            
+                            if (safeToDelete.length > 0) {
+                                await tx.answerOptionQuestion.deleteMany({
+                                    where: {
+                                        id: { in: safeToDelete }
                                     }
                                 })
                             }
-                        } else {
-                            // Delete all question trees if no questionTree provided
-                            await tx.questionTree.deleteMany({
-                                where: { questionTriggerId: questionData.id }
-                            })
                         }
+
+                        // Handle question tree (only for parent questions, and only after all questions are created)
+                        // Skip here, will process after all questions are created
                     } else {
                         const question = await tx.question.create({
                             data: {
@@ -1328,34 +1427,72 @@ class SurveyRepository extends BaseRepository {
                             }
                         }
 
-                        // Handle question tree for new question
-                        if (questionData.questionTree && questionData.questionTree.length > 0) {
-                            // Create question trees
-                            for (const treeData of questionData.questionTree) {
-                                let answerOptionId = treeData.answerQuestionTriggerId
+                        // Handle question tree for new question - skip here, will process after all questions are created
+                    }
+                }
 
-                                // If answerQuestionTriggerId is not a UUID, map it using answerText and sortOrder
-                                const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
-                                if (!uuidRegex.test(answerOptionId) && treeData._tempAnswerText !== undefined && treeData._tempSortOrder !== undefined) {
-                                    const mappedOption = createdOptions.find(
-                                        opt => opt.answerText === treeData._tempAnswerText && opt.sortOrder === treeData._tempSortOrder
-                                    )
-                                    if (mappedOption) {
-                                        answerOptionId = mappedOption.id
-                                    } else {
-                                        continue // Skip if option not found
-                                    }
-                                }
-
-                                await tx.questionTree.create({
-                                    data: {
-                                        questionTriggerId: question.id,
-                                        answerQuestionTriggerId: answerOptionId,
-                                        questionPointerToId: treeData.questionPointerToId
-                                    }
-                                })
-                            }
+                // Now process QuestionTree for all parent questions
+                // This ensures all child questions are already created before creating QuestionTree
+                for (const questionData of parentQuestions) {
+                    if (questionData.questionTree && questionData.questionTree.length > 0) {
+                        // Verify question exists (should exist from previous loop)
+                        const question = await tx.question.findUnique({
+                            where: { id: questionData.id }
+                        })
+                        
+                        if (!question) {
+                            continue
                         }
+                        
+                        // Delete existing question trees for this question
+                        await tx.questionTree.deleteMany({
+                            where: { questionTriggerId: questionData.id }
+                        })
+
+                        // Get all answer options for this question to map questionTree
+                        const answerOptions = await tx.answerOptionQuestion.findMany({
+                            where: { questionId: questionData.id }
+                        })
+
+                        // Create new question trees
+                        for (const treeData of questionData.questionTree) {
+                            let answerOptionId = treeData.answerQuestionTriggerId
+
+                            // If answerQuestionTriggerId is not a UUID, map it using answerText and sortOrder
+                            const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+                            if (!uuidRegex.test(answerOptionId) && treeData._tempAnswerText !== undefined && treeData._tempSortOrder !== undefined) {
+                                const mappedOption = answerOptions.find(
+                                    opt => opt.answerText === treeData._tempAnswerText && opt.sortOrder === treeData._tempSortOrder
+                                )
+                                if (mappedOption) {
+                                    answerOptionId = mappedOption.id
+                                } else {
+                                    continue // Skip if option not found
+                                }
+                            }
+
+                            // Verify that questionPointerToId (child question) exists
+                            const childQuestion = await tx.question.findUnique({
+                                where: { id: treeData.questionPointerToId }
+                            })
+                            
+                            if (!childQuestion) {
+                                continue
+                            }
+
+                            await tx.questionTree.create({
+                                data: {
+                                    questionTriggerId: questionData.id,
+                                    answerQuestionTriggerId: answerOptionId,
+                                    questionPointerToId: treeData.questionPointerToId
+                                }
+                            })
+                        }
+                    } else {
+                        // Delete all question trees if no questionTree provided
+                        await tx.questionTree.deleteMany({
+                            where: { questionTriggerId: questionData.id }
+                        })
                     }
                 }
 
@@ -1373,7 +1510,12 @@ class SurveyRepository extends BaseRepository {
                 totalPages
             }
         } catch (error) {
-            this.logger.error(error)
+            this.logger.error('Error in saveBuilder:', error)
+            // Provide more specific error message for foreign key constraint violations
+            if (error.code === 'P2003' || error.message?.includes('Foreign key constraint')) {
+                const ErrorHttp = require("../../shared/http/error.http")
+                throw new ErrorHttp(409, `Cannot Delete Record: ${error.meta?.field_name || 'Foreign key constraint violated'}. Pastikan semua child questions sudah dibuat sebelum membuat QuestionTree.`)
+            }
             throw error
         }
     }
@@ -1386,12 +1528,22 @@ class SurveyRepository extends BaseRepository {
                 select: { code: true }
             })
 
-            if (codeQuestions.length === 0) return 0
+            if (codeQuestions.length === 0) {
+                this.logger.info(`[getQuestionCount] No code questions found for surveyId: ${surveyId}`)
+                return 0
+            }
 
             const codeIds = codeQuestions.map(cq => cq.code)
-            return await this.prismaClient.question.count({
-                where: { codeId: { in: codeIds } }
+            // Only count parent questions (children are part of parent, e.g., rating items)
+            const count = await this.prismaClient.question.count({
+                where: {
+                    codeId: { in: codeIds },
+                    parentId: null // Only count parent questions
+                }
             })
+            
+            this.logger.info(`[getQuestionCount] SurveyId: ${surveyId}, CodeIds: ${JSON.stringify(codeIds)}, Parent Questions Count: ${count}`)
+            return count
         } catch (error) {
             this.logger.error(error)
             return 0

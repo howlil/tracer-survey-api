@@ -41,6 +41,15 @@ class ManagerValidation {
                 }),
         })
     }
+
+    static idParamSchema() {
+        return joi.object({
+            id: joi.string().uuid().required().messages({
+                'string.uuid': 'ID manager harus berupa UUID yang valid',
+                'any.required': 'ID manager wajib diisi',
+            }),
+        })
+    }
 }
 
 module.exports = ManagerValidation

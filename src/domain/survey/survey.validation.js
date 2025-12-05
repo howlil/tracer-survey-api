@@ -130,20 +130,6 @@ class SurveyValidation {
 
     static createRuleSchema() {
         return joi.object({
-            facultyId: joi.string()
-                .uuid()
-                .required()
-                .messages({
-                    'string.guid': 'Faculty ID harus berupa UUID yang valid',
-                    'any.required': 'Faculty ID wajib diisi'
-                }),
-            majorId: joi.string()
-                .uuid()
-                .allow(null)
-                .optional()
-                .messages({
-                    'string.guid': 'Major ID harus berupa UUID yang valid'
-                }),
             degree: joi.string()
                 .valid('S1', 'PASCA', 'PROFESI', 'VOKASI')
                 .required()
@@ -156,19 +142,6 @@ class SurveyValidation {
 
     static updateRuleSchema() {
         return joi.object({
-            facultyId: joi.string()
-                .uuid()
-                .optional()
-                .messages({
-                    'string.guid': 'Faculty ID harus berupa UUID yang valid'
-                }),
-            majorId: joi.string()
-                .uuid()
-                .allow(null)
-                .optional()
-                .messages({
-                    'string.guid': 'Major ID harus berupa UUID yang valid'
-                }),
             degree: joi.string()
                 .valid('S1', 'PASCA', 'PROFESI', 'VOKASI')
                 .optional()

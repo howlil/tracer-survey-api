@@ -16,6 +16,13 @@ class FaqRoute extends BaseRoute {
     }
 
     createRoute() {
+        // Public endpoint for FAQ page (no authentication required)
+        this.get(
+            "/v1/faqs/public",
+            "findManyPublic"
+        )
+
+        // Admin endpoint (requires authentication)
         this.get(
             "/v1/faqs",
             "findMany",

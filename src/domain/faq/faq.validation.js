@@ -3,56 +3,50 @@ const joi = require('joi')
 class FaqValidation {
     static createSchema() {
         return joi.object({
-            title: joi.string()
+            question: joi.string()
                 .min(5)
-                .max(200)
+                .max(500)
                 .trim()
                 .required()
                 .messages({
-                    'string.min': 'Title minimal 5 karakter',
-                    'string.max': 'Title maksimal 200 karakter',
-                    'any.required': 'Title wajib diisi'
+                    'string.min': 'Pertanyaan minimal 5 karakter',
+                    'string.max': 'Pertanyaan maksimal 500 karakter',
+                    'any.required': 'Pertanyaan wajib diisi'
                 }),
             
-            link: joi.string()
-                .uri({
-                    scheme: ['http', 'https']
-                })
+            answer: joi.string()
                 .min(10)
-                .max(500)
+                .max(2000)
+                .trim()
                 .required()
                 .messages({
-                    'string.uri': 'Link harus berupa URL yang valid (http/https)',
-                    'string.min': 'Link minimal 10 karakter',
-                    'string.max': 'Link maksimal 500 karakter',
-                    'any.required': 'Link wajib diisi'
+                    'string.min': 'Jawaban minimal 10 karakter',
+                    'string.max': 'Jawaban maksimal 2000 karakter',
+                    'any.required': 'Jawaban wajib diisi'
                 })
         })
     }
 
     static updateSchema() {
         return joi.object({
-            title: joi.string()
+            question: joi.string()
                 .min(5)
-                .max(200)
+                .max(500)
                 .trim()
                 .optional()
                 .messages({
-                    'string.min': 'Title minimal 5 karakter',
-                    'string.max': 'Title maksimal 200 karakter'
+                    'string.min': 'Pertanyaan minimal 5 karakter',
+                    'string.max': 'Pertanyaan maksimal 500 karakter'
                 }),
             
-            link: joi.string()
-                .uri({
-                    scheme: ['http', 'https']
-                })
+            answer: joi.string()
                 .min(10)
-                .max(500)
+                .max(2000)
+                .trim()
                 .optional()
                 .messages({
-                    'string.uri': 'Link harus berupa URL yang valid (http/https)',
-                    'string.min': 'Link minimal 10 karakter',
-                    'string.max': 'Link maksimal 500 karakter'
+                    'string.min': 'Jawaban minimal 10 karakter',
+                    'string.max': 'Jawaban maksimal 2000 karakter'
                 })
         })
     }

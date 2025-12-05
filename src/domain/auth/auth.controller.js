@@ -25,7 +25,7 @@ class AuthController extends BaseController {
     async alumniLogin(req, res, next) {
         try {
             const { pin, recaptchaToken } = req.extract.getBody()
-            const remoteIp = req.ip || req.connection.remoteAddress || null
+            const remoteIp = req.ip || req.connection.remoteAddress || req.headers['x-forwarded-for'] || req.headers['x-real-ip'] || null
 
             // Validate Google reCAPTCHA
             const isValidCaptcha = await CaptchaUtil.validateRecaptcha(recaptchaToken, remoteIp)

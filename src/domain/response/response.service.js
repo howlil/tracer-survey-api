@@ -26,9 +26,12 @@ class ResponseService extends BaseService {
 
     async exportTracerStudyResponses(options, res) {
         try {
+            this.logger.info('[exportTracerStudyResponses] Service called with options:', JSON.stringify(options))
             return await this.responseRepository.exportTracerStudyResponses(options, res)
         } catch (error) {
-            this.logger.error(error)
+            this.logger.error('[exportTracerStudyResponses] Service error:', error)
+            this.logger.error('[exportTracerStudyResponses] Service error message:', error.message)
+            this.logger.error('[exportTracerStudyResponses] Service error stack:', error.stack)
             throw error
         }
     }
@@ -63,6 +66,15 @@ class ResponseService extends BaseService {
     async submitResponse(data) {
         try {
             return await this.responseRepository.submitResponse(data)
+        } catch (error) {
+            this.logger.error(error)
+            throw error
+        }
+    }
+
+    async saveDraft(data) {
+        try {
+            return await this.responseRepository.saveDraft(data)
         } catch (error) {
             this.logger.error(error)
             throw error

@@ -11,7 +11,7 @@
   },
   "servers": [
     {
-      "url": "https://piglet-amused-willingly.ngrok-free.app/api",
+      "url": "http://localhost:5000/api",
       "description": "Development server"
     }
   ],

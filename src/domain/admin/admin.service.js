@@ -1,4 +1,5 @@
 const BaseService = require("../../shared/base/base.service")
+const PasswordUtil = require("../../shared/utils/password.util")
 
 class AdminService extends BaseService {
     constructor(adminRepository, logger) {
@@ -38,10 +39,16 @@ class AdminService extends BaseService {
     async create(options = {}) {
         try {
             const { data } = options
-            const { roleIds, ...adminData } = data
+            const { roleIds, password, ...adminData } = data
+
+            // Hash password sebelum disimpan
+            const hashedPassword = await PasswordUtil.hashPassword(password)
 
             const result = await this.adminRepository.createWithRoles({
-                adminData,
+                adminData: {
+                    ...adminData,
+                    password: hashedPassword
+                },
                 roleIds
             })
 

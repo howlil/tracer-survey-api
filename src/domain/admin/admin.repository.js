@@ -56,6 +56,8 @@ class AdminRepository extends BaseRepository {
                 name: admin.name,
                 email: admin.email,
                 isActive: admin.isActive,
+                createdAt: admin.createdAt,
+                updatedAt: admin.updatedAt,
                 roles: admin.roles.map(ar => ({
                     adminId: ar.adminId,
                     roleId: ar.roleId,
@@ -102,6 +104,8 @@ class AdminRepository extends BaseRepository {
                 name: admin.name,
                 email: admin.email,
                 isActive: admin.isActive,
+                createdAt: admin.createdAt,
+                updatedAt: admin.updatedAt,
                 roles: admin.roles.map(ar => ({
                     adminId: ar.adminId,
                     roleId: ar.roleId,
@@ -149,6 +153,8 @@ class AdminRepository extends BaseRepository {
                     name: admin.name,
                     email: admin.email,
                     isActive: admin.isActive,
+                    createdAt: admin.createdAt,
+                    updatedAt: admin.updatedAt,
                     roles: admin.roles.map(ar => ({
                         adminId: ar.adminId,
                         roleId: ar.roleId,
@@ -219,6 +225,8 @@ class AdminRepository extends BaseRepository {
                     name: admin.name,
                     email: admin.email,
                     isActive: admin.isActive,
+                    createdAt: admin.createdAt,
+                    updatedAt: admin.updatedAt,
                     roles: admin.roles.map(ar => ({
                         adminId: ar.adminId,
                         roleId: ar.roleId,

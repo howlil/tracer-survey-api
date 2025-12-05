@@ -13,15 +13,20 @@ async function seedSurvey(logger) {
 
         logger.info(`📚 Found ${faculties.length} faculties`)
 
+        // Use fixed UUIDs for surveys to ensure consistency across seed runs
+        // Tracer Study Survey UUID
+        const tracerStudySurveyId = '550e8400-e29b-41d4-a716-446655440001'
+        logger.info(`📝 Using UUID for Tracer Study Survey: ${tracerStudySurveyId}`)
+
         // Create Survey 1: Tracer Study for ALUMNI
         logger.info('📝 Creating Tracer Study Survey for ALUMNI...')
         const tracerStudySurvey = await prisma.survey.upsert({
             where: {
-                id: 'tracer-study-alumni-2024'
+                id: tracerStudySurveyId
             },
             update: {},
             create: {
-                id: 'tracer-study-alumni-2024',
+                id: tracerStudySurveyId,
                 greetingOpening: {
                     title: 'Selamat Datang di Tracer Study',
                     message: 'Terima kasih telah meluangkan waktu untuk mengisi survey tracer study ini. Data yang Anda berikan sangat penting untuk pengembangan kualitas pendidikan di universitas kami.',
@@ -40,70 +45,133 @@ async function seedSurvey(logger) {
 
         logger.info(`✅ Created Survey: ${tracerStudySurvey.id}`)
 
+        // Delete existing survey rules for this survey
+        await prisma.surveyRules.deleteMany({
+            where: { surveyId: tracerStudySurvey.id }
+        })
+
         // Create Survey Rules for ALUMNI survey
         logger.info('📋 Creating Survey Rules...')
         const surveyRules = []
-        for (const faculty of faculties) {
-            const majors = await prisma.major.findMany({
-                where: { facultyId: faculty.id }
-            })
-
-            // Create rule for all majors in faculty
-            surveyRules.push({
-                surveyId: tracerStudySurvey.id,
-                facultyId: faculty.id,
-                majorId: null,
-                degree: 'S1'
-            })
-
-            // Create rules for specific majors if they exist
-            if (majors.length > 0) {
-                for (const major of majors.slice(0, 2)) { // Limit to first 2 majors per faculty
-                    surveyRules.push({
-                        surveyId: tracerStudySurvey.id,
-                        facultyId: faculty.id,
-                        majorId: major.id,
-                        degree: 'S1'
-                    })
-                }
-            }
-        }
+        // Create rule for S1 degree (applies to all faculties and majors)
+        surveyRules.push({
+            surveyId: tracerStudySurvey.id,
+            degree: 'S1'
+        })
 
         for (const rule of surveyRules) {
-            await prisma.surveyRules.create({
-                data: rule
+            await prisma.surveyRules.upsert({
+                where: {
+                    surveyId_degree: {
+                        surveyId: rule.surveyId,
+                        degree: rule.degree
+                    }
+                },
+                update: {},
+                create: rule
             })
         }
         logger.info(`✅ Created ${surveyRules.length} Survey Rules`)
 
-        // Create Code Questions
-        logger.info('🔢 Creating Code Questions...')
-        const codeQuestions = [
-            { code: 'A', surveyId: tracerStudySurvey.id }, // Data Pribadi & Akademik
-            { code: 'B', surveyId: tracerStudySurvey.id }, // Data Pekerjaan
-            { code: 'C', surveyId: tracerStudySurvey.id }, // Kesesuaian Bidang Kerja
-            { code: 'D', surveyId: tracerStudySurvey.id }, // Kompetensi
-            { code: 'E', surveyId: tracerStudySurvey.id }  // Penilaian Pendidikan
-        ]
-
-        for (const codeQ of codeQuestions) {
-            await prisma.codeQuestion.upsert({
-                where: { code: codeQ.code },
-                update: {},
-                create: codeQ
+        // Delete existing code questions and questions for this survey first
+        logger.info('🗑️  Cleaning up existing Code Questions and Questions...')
+        
+        // Get all code questions for this survey
+        const existingCodeQuestions = await prisma.codeQuestion.findMany({
+            where: { surveyId: tracerStudySurvey.id },
+            select: { code: true }
+        })
+        
+        const codeIds = existingCodeQuestions.map(cq => cq.code)
+        
+        // Get all questions that use these codeIds (including any duplicates)
+        const allQuestions = codeIds.length > 0 
+            ? await prisma.question.findMany({
+                where: { codeId: { in: codeIds } },
+                select: { id: true }
+            })
+            : []
+        
+        const allQuestionIds = allQuestions.map(q => q.id)
+        
+        if (allQuestionIds.length > 0) {
+            // Delete in correct order to avoid foreign key constraint violations
+            // 1. Delete QuestionTree (references Question via questionTriggerId and questionPointerToId)
+            await prisma.questionTree.deleteMany({
+                where: {
+                    OR: [
+                        { questionTriggerId: { in: allQuestionIds } },
+                        { questionPointerToId: { in: allQuestionIds } }
+                    ]
+                }
+            })
+            
+            // 2. Delete AnswerMultipleChoice (references Question)
+            await prisma.answerMultipleChoice.deleteMany({
+                where: { questionId: { in: allQuestionIds } }
+            })
+            
+            // 3. Delete Answer (references Question)
+            await prisma.answer.deleteMany({
+                where: { questionId: { in: allQuestionIds } }
+            })
+            
+            // 4. Delete AnswerOptionQuestion (references Question)
+            await prisma.answerOptionQuestion.deleteMany({
+                where: { questionId: { in: allQuestionIds } }
+            })
+            
+            // 5. Delete Questions (children first, then parents)
+            // Delete children questions first (those with parentId)
+            await prisma.question.deleteMany({
+                where: {
+                    id: { in: allQuestionIds },
+                    parentId: { not: null }
+                }
+            })
+            
+            // Then delete parent questions
+            await prisma.question.deleteMany({
+                where: {
+                    id: { in: allQuestionIds },
+                    parentId: null
+                }
             })
         }
-        logger.info(`✅ Created ${codeQuestions.length} Code Questions`)
+        
+        // Delete code questions (this will also ensure no orphaned code questions)
+        await prisma.codeQuestion.deleteMany({
+            where: { surveyId: tracerStudySurvey.id }
+        })
+        logger.info('✅ Cleaned up existing data')
 
-        // Create Group Questions
+        // Helper function to create CodeQuestion for each question
+        // Format: {questionCode} (e.g., A1, A2, B1, B2) - version is stored separately
+        // Since code is @id (primary key), we need to make it unique per survey
+        // Format: {questionCode}-{surveyId} to ensure uniqueness
+        const createCodeQuestion = async (questionCode, surveyId) => {
+            // Use survey ID to make code unique per survey
+            // The questionCode part (A1, A2, etc.) is the actual code, version is in survey
+            const code = `${questionCode}-${surveyId}`
+            return await prisma.codeQuestion.upsert({
+                where: { code },
+                update: {},
+                create: {
+                    code,
+                    surveyId
+                }
+            })
+        }
+
+        // Create Group Questions based on mock data structure
         logger.info('📦 Creating Group Questions...')
         const groupQuestionsData = [
-            { groupName: 'Data Identitas dan Akademik' },
-            { groupName: 'Informasi Pekerjaan' },
-            { groupName: 'Kesesuaian Pekerjaan dengan Bidang Studi' },
+            { groupName: 'Data Pribadi' },
+            { groupName: 'Informasi Kontak' },
+            { groupName: 'Status Kerja' },
             { groupName: 'Penilaian Kompetensi' },
-            { groupName: 'Evaluasi Program Studi' },
-            { groupName: 'Rekomendasi dan Saran' }
+            { groupName: 'Kepuasan Pendidikan' },
+            { groupName: 'Saran dan Harapan' }
         ]
 
         const groupQuestions = []
@@ -115,315 +183,466 @@ async function seedSurvey(logger) {
         }
         logger.info(`✅ Created ${groupQuestions.length} Group Questions`)
 
-        // Get code questions
-        const codeA = await prisma.codeQuestion.findUnique({ where: { code: 'A' } })
-        const codeB = await prisma.codeQuestion.findUnique({ where: { code: 'B' } })
-        const codeC = await prisma.codeQuestion.findUnique({ where: { code: 'C' } })
-        const codeD = await prisma.codeQuestion.findUnique({ where: { code: 'D' } })
-        const codeE = await prisma.codeQuestion.findUnique({ where: { code: 'E' } })
-
-        // Create Questions
+        // Create Questions based on mock data
         logger.info('❓ Creating Questions...')
 
         let sortOrder = 1
         const questions = []
 
-        // ===== GROUP 1: Data Identitas dan Akademik =====
-        // Question A1: Status Pekerjaan
+        // ===== PAGE 1: Data Pribadi =====
+        const pageNumber1 = 1
+        // Question A1: Nama Lengkap
+        const codeA1 = await createCodeQuestion('A1', tracerStudySurvey.id)
         const qA1 = await prisma.question.create({
             data: {
-                codeId: codeA.code,
+                codeId: codeA1.code,
                 groupQuestionId: groupQuestions[0].id,
-                questionText: 'Bagaimana status pekerjaan Anda saat ini?',
-                questionType: 'SINGLE_CHOICE',
+                questionText: 'Nama Lengkap',
+                questionType: 'ESSAY',
                 isRequired: true,
                 sortOrder: sortOrder++,
-                placeholder: 'Pilih salah satu',
-                searchplaceholder: ''
+                placeholder: 'Masukkan nama lengkap sesuai ijazah',
+                searchplaceholder: '',
+                pageNumber: pageNumber1
             }
         })
         questions.push(qA1)
 
-        const qA1Options = await createAnswerOptions(qA1.id, [
-            { text: 'Bekerja (Full Time)', order: 1 },
-            { text: 'Bekerja (Part Time)', order: 2 },
-            { text: 'Wiraswasta', order: 3 },
-            { text: 'Belum Bekerja', order: 4 },
-            { text: 'Melanjutkan Pendidikan', order: 5 },
-            { text: 'Lainnya', order: 6, isTriggered: true, placeholder: 'Sebutkan' }
-        ])
-
-        // Question A2: Tanggal Mulai Bekerja (conditional - if working)
+        // Question A2: NIM
+        const codeA2 = await createCodeQuestion('A2', tracerStudySurvey.id)
         const qA2 = await prisma.question.create({
             data: {
-                codeId: codeA.code,
+                codeId: codeA2.code,
                 groupQuestionId: groupQuestions[0].id,
-                parentId: qA1.id,
-                questionText: 'Kapan Anda mulai bekerja?',
-                questionType: 'COMBO_BOX',
-                isRequired: false,
+                questionText: 'NIM (Nomor Induk Mahasiswa)',
+                questionType: 'ESSAY',
+                isRequired: true,
                 sortOrder: sortOrder++,
-                placeholder: 'Pilih bulan dan tahun',
-                searchplaceholder: ''
+                placeholder: 'Masukkan NIM Anda',
+                searchplaceholder: '',
+                pageNumber: pageNumber1
             }
         })
         questions.push(qA2)
 
-        // Question A3: Nama Perusahaan
+        // Question A3: Program Studi
+        const codeA3 = await createCodeQuestion('A3', tracerStudySurvey.id)
         const qA3 = await prisma.question.create({
             data: {
-                codeId: codeA.code,
+                codeId: codeA3.code,
                 groupQuestionId: groupQuestions[0].id,
-                parentId: qA1.id,
-                questionText: 'Nama perusahaan atau instansi tempat Anda bekerja?',
-                questionType: 'LONG_TEST',
-                isRequired: false,
+                questionText: 'Program Studi',
+                questionType: 'ESSAY',
+                isRequired: true,
                 sortOrder: sortOrder++,
-                placeholder: 'Masukkan nama perusahaan/instansi',
-                searchplaceholder: ''
+                placeholder: 'Masukkan program studi Anda',
+                searchplaceholder: '',
+                pageNumber: pageNumber1
             }
         })
         questions.push(qA3)
 
-        // Question A4: Alamat Perusahaan
+        // Question A4: Tahun Lulus
+        const codeA4 = await createCodeQuestion('A4', tracerStudySurvey.id)
         const qA4 = await prisma.question.create({
             data: {
-                codeId: codeA.code,
+                codeId: codeA4.code,
                 groupQuestionId: groupQuestions[0].id,
-                parentId: qA1.id,
-                questionText: 'Alamat lengkap perusahaan/instansi tempat bekerja?',
+                questionText: 'Tahun Lulus',
                 questionType: 'ESSAY',
-                isRequired: false,
+                isRequired: true,
                 sortOrder: sortOrder++,
-                placeholder: 'Masukkan alamat lengkap',
-                searchplaceholder: ''
+                placeholder: 'Contoh: 2023',
+                searchplaceholder: '',
+                pageNumber: pageNumber1
             }
         })
         questions.push(qA4)
 
-        // Question A5: Provinsi
+        // Question A5: Jenis Kelamin
+        const codeA5 = await createCodeQuestion('A5', tracerStudySurvey.id)
         const qA5 = await prisma.question.create({
             data: {
-                codeId: codeA.code,
+                codeId: codeA5.code,
                 groupQuestionId: groupQuestions[0].id,
-                parentId: qA1.id,
-                questionText: 'Provinsi tempat bekerja?',
-                questionType: 'COMBO_BOX',
-                isRequired: false,
+                questionText: 'Jenis Kelamin',
+                questionType: 'SINGLE_CHOICE',
+                isRequired: true,
                 sortOrder: sortOrder++,
-                placeholder: 'Pilih provinsi',
-                searchplaceholder: 'Cari provinsi'
+                placeholder: 'Pilih jenis kelamin',
+                searchplaceholder: '',
+                pageNumber: pageNumber1
             }
         })
         questions.push(qA5)
 
-        // Create QuestionTree: If "Bekerja" selected in A1, show A2, A3, A4, A5
-        const workingOptions = qA1Options.filter(opt =>
-            opt.answerText.includes('Bekerja') || opt.answerText === 'Wiraswasta'
-        )
-        for (const workingOption of workingOptions) {
-            for (const childQ of [qA2, qA3, qA4, qA5]) {
-                await prisma.questionTree.create({
-                    data: {
-                        questionTriggerId: qA1.id,
-                        answerQuestionTriggerId: workingOption.id,
-                        questionPointerToId: childQ.id
-                    }
-                })
-            }
-        }
+        await createAnswerOptions(qA5.id, [
+            { text: 'Laki-laki', order: 1 },
+            { text: 'Perempuan', order: 2 }
+        ])
 
-        // ===== GROUP 2: Informasi Pekerjaan =====
-        // Question B1: Jabatan
+        // ===== PAGE 2: Informasi Kontak =====
+        const pageNumber2 = 2
+        // Question B1: Email
+        const codeB1 = await createCodeQuestion('B1', tracerStudySurvey.id)
         const qB1 = await prisma.question.create({
             data: {
-                codeId: codeB.code,
+                codeId: codeB1.code,
                 groupQuestionId: groupQuestions[1].id,
-                questionText: 'Jabatan atau posisi Anda saat ini?',
-                questionType: 'LONG_TEST',
+                questionText: 'Alamat Email',
+                questionType: 'ESSAY',
                 isRequired: true,
                 sortOrder: sortOrder++,
-                placeholder: 'Contoh: Software Engineer, Marketing Manager, dll',
-                searchplaceholder: ''
+                placeholder: 'contoh@email.com',
+                searchplaceholder: '',
+                pageNumber: pageNumber2
             }
         })
         questions.push(qB1)
 
-        // Question B2: Bidang Pekerjaan
+        // Question B2: Telepon
+        const codeB2 = await createCodeQuestion('B2', tracerStudySurvey.id)
         const qB2 = await prisma.question.create({
             data: {
-                codeId: codeB.code,
+                codeId: codeB2.code,
                 groupQuestionId: groupQuestions[1].id,
-                questionText: 'Bidang pekerjaan/perusahaan Anda termasuk ke dalam kategori?',
-                questionType: 'SINGLE_CHOICE',
+                questionText: 'Nomor Telepon/WhatsApp',
+                questionType: 'ESSAY',
                 isRequired: true,
                 sortOrder: sortOrder++,
-                placeholder: 'Pilih salah satu',
-                searchplaceholder: ''
+                placeholder: '08xxxxxxxxxx',
+                searchplaceholder: '',
+                pageNumber: pageNumber2
             }
         })
         questions.push(qB2)
 
-        const qB2Options = await createAnswerOptions(qB2.id, [
-            { text: 'Pemerintahan/PNS', order: 1 },
-            { text: 'Swasta Nasional', order: 2 },
-            { text: 'Swasta Multinasional', order: 3 },
-            { text: 'BUMN', order: 4 },
-            { text: 'Lembaga Non Profit', order: 5 },
-            { text: 'Lainnya', order: 6, isTriggered: true, placeholder: 'Sebutkan' }
-        ])
-
-        // Question B3: Gaji
+        // Question B3: Alamat Tinggal
+        const codeB3 = await createCodeQuestion('B3', tracerStudySurvey.id)
         const qB3 = await prisma.question.create({
             data: {
-                codeId: codeB.code,
+                codeId: codeB3.code,
                 groupQuestionId: groupQuestions[1].id,
-                questionText: 'Berapa gaji/penghasilan utama Anda per bulan?',
-                questionType: 'SINGLE_CHOICE',
+                questionText: 'Alamat Tempat Tinggal Saat Ini',
+                questionType: 'LONG_TEST',
                 isRequired: true,
                 sortOrder: sortOrder++,
-                placeholder: 'Pilih range gaji',
-                searchplaceholder: ''
+                placeholder: 'Masukkan alamat lengkap tempat tinggal',
+                searchplaceholder: '',
+                pageNumber: pageNumber2
             }
         })
         questions.push(qB3)
 
-        await createAnswerOptions(qB3.id, [
-            { text: 'Kurang dari Rp 2.000.000', order: 1 },
-            { text: 'Rp 2.000.000 - Rp 4.000.000', order: 2 },
-            { text: 'Rp 4.000.000 - Rp 6.000.000', order: 3 },
-            { text: 'Rp 6.000.000 - Rp 8.000.000', order: 4 },
-            { text: 'Rp 8.000.000 - Rp 10.000.000', order: 5 },
-            { text: 'Rp 10.000.000 - Rp 15.000.000', order: 6 },
-            { text: 'Lebih dari Rp 15.000.000', order: 7 }
-        ])
-
-        // Question B4: Cara Mendapatkan Pekerjaan
+        // Question B4: Provinsi
+        const codeB4 = await createCodeQuestion('B4', tracerStudySurvey.id)
         const qB4 = await prisma.question.create({
             data: {
-                codeId: codeB.code,
+                codeId: codeB4.code,
                 groupQuestionId: groupQuestions[1].id,
-                questionText: 'Bagaimana cara Anda mendapatkan pekerjaan pertama setelah lulus?',
-                questionType: 'MULTIPLE_CHOICE',
+                questionText: 'Provinsi',
+                questionType: 'COMBO_BOX',
                 isRequired: true,
                 sortOrder: sortOrder++,
-                placeholder: 'Pilih semua yang sesuai',
-                searchplaceholder: ''
+                placeholder: 'Pilih provinsi tempat tinggal',
+                searchplaceholder: 'Cari provinsi...',
+                pageNumber: pageNumber2
             }
         })
         questions.push(qB4)
 
-        await createAnswerOptions(qB4.id, [
-            { text: 'Melamar melalui iklan lowongan', order: 1 },
-            { text: 'Melamar tanpa iklan lowongan', order: 2 },
-            { text: 'Melalui hubungan keluarga/teman', order: 3 },
-            { text: 'Melalui perusahaan tempat magang/KP', order: 4 },
-            { text: 'Melalui alumni', order: 5 },
-            { text: 'Melalui kampus/perguruan tinggi', order: 6 },
-            { text: 'Membangun usaha sendiri/wiraswasta', order: 7 },
-            { text: 'Lainnya', order: 8, isTriggered: true, placeholder: 'Sebutkan' }
-        ])
+        // Provinsi options
+        const provinsiOptions = [
+            'Aceh', 'Sumatera Utara', 'Sumatera Barat', 'Riau', 'Kepulauan Riau',
+            'Jambi', 'Sumatera Selatan', 'Bangka Belitung', 'Bengkulu', 'Lampung',
+            'DKI Jakarta', 'Jawa Barat', 'Jawa Tengah', 'DI Yogyakarta', 'Jawa Timur',
+            'Banten', 'Bali', 'Nusa Tenggara Barat', 'Nusa Tenggara Timur',
+            'Kalimantan Barat', 'Kalimantan Tengah', 'Kalimantan Selatan', 'Kalimantan Timur', 'Kalimantan Utara',
+            'Sulawesi Utara', 'Sulawesi Tengah', 'Sulawesi Selatan', 'Sulawesi Tenggara', 'Gorontalo', 'Sulawesi Barat',
+            'Maluku', 'Maluku Utara', 'Papua', 'Papua Barat'
+        ]
+        await createAnswerOptions(qB4.id, provinsiOptions.map((p, i) => ({ text: p, order: i + 1 })))
 
-        // Question B5: Waktu Tunggu Mendapatkan Pekerjaan
-        const qB5 = await prisma.question.create({
-            data: {
-                codeId: codeB.code,
-                groupQuestionId: groupQuestions[1].id,
-                questionText: 'Berapa lama waktu yang Anda butuhkan untuk mendapatkan pekerjaan pertama setelah lulus?',
-                questionType: 'SINGLE_CHOICE',
-                isRequired: true,
-                sortOrder: sortOrder++,
-                placeholder: 'Pilih salah satu',
-                searchplaceholder: ''
-            }
-        })
-        questions.push(qB5)
-
-        await createAnswerOptions(qB5.id, [
-            { text: 'Sebelum lulus', order: 1 },
-            { text: '0-3 bulan', order: 2 },
-            { text: '4-6 bulan', order: 3 },
-            { text: '7-12 bulan', order: 4 },
-            { text: 'Lebih dari 12 bulan', order: 5 },
-            { text: 'Saya belum bekerja', order: 6 }
-        ])
-
-        // ===== GROUP 3: Kesesuaian Pekerjaan dengan Bidang Studi =====
-        // Question C1: Kesesuaian Bidang
+        // ===== PAGE 3: Status Kerja =====
+        const pageNumber3 = 3
+        // Question C1: Status Kerja
+        const codeC1 = await createCodeQuestion('C1', tracerStudySurvey.id)
         const qC1 = await prisma.question.create({
             data: {
-                codeId: codeC.code,
+                codeId: codeC1.code,
                 groupQuestionId: groupQuestions[2].id,
-                questionText: 'Seberapa besar pekerjaan Anda saat ini sesuai dengan bidang studi yang Anda pelajari di perguruan tinggi?',
+                questionText: 'Status Kerja Saat Ini',
                 questionType: 'SINGLE_CHOICE',
                 isRequired: true,
                 sortOrder: sortOrder++,
-                placeholder: 'Pilih tingkat kesesuaian',
-                searchplaceholder: ''
+                placeholder: 'Pilih status kerja',
+                searchplaceholder: '',
+                pageNumber: pageNumber3
             }
         })
         questions.push(qC1)
 
-        await createAnswerOptions(qC1.id, [
-            { text: 'Sangat Sesuai', order: 1 },
-            { text: 'Sesuai', order: 2 },
-            { text: 'Kurang Sesuai', order: 3 },
-            { text: 'Tidak Sesuai', order: 4 }
+        const qC1Options = await createAnswerOptions(qC1.id, [
+            { text: 'Bekerja (Full Time)', order: 1, isTriggered: true },
+            { text: 'Bekerja (Part Time)', order: 2, isTriggered: true },
+            { text: 'Wiraswasta', order: 3, isTriggered: true },
+            { text: 'Tidak Bekerja', order: 4, isTriggered: true },
+            { text: 'Melanjutkan Studi', order: 5, isTriggered: true },
+            { text: 'Lainnya', order: 6, isTriggered: true, placeholder: 'Sebutkan status lainnya...' }
         ])
 
-        // Question C2: Alasan Tidak Sesuai (conditional)
+        // Question C2: Bidang Kerja/Usaha
+        const codeC2 = await createCodeQuestion('C2', tracerStudySurvey.id)
         const qC2 = await prisma.question.create({
             data: {
-                codeId: codeC.code,
+                codeId: codeC2.code,
                 groupQuestionId: groupQuestions[2].id,
-                parentId: qC1.id,
-                questionText: 'Apa alasan utama pekerjaan Anda tidak sesuai dengan bidang studi?',
-                questionType: 'MULTIPLE_CHOICE',
+                questionText: 'Bidang Kerja/Usaha',
+                questionType: 'ESSAY',
                 isRequired: false,
                 sortOrder: sortOrder++,
-                placeholder: 'Pilih semua yang sesuai',
-                searchplaceholder: ''
+                placeholder: 'Contoh: Teknologi Informasi, Pendidikan, dll',
+                searchplaceholder: '',
+                pageNumber: pageNumber3
             }
         })
         questions.push(qC2)
 
-        const qC2Options = await createAnswerOptions(qC2.id, [
-            { text: 'Tidak ada lowongan di bidang yang sesuai', order: 1 },
-            { text: 'Gaji lebih baik di bidang ini', order: 2 },
-            { text: 'Lebih tertarik di bidang ini', order: 3 },
-            { text: 'Kualifikasi yang diminta lebih tinggi', order: 4 },
-            { text: 'Lainnya', order: 5, isTriggered: true, placeholder: 'Sebutkan' }
-        ])
-
-        // Create QuestionTree for C2
-        const notSuitableOptions = await prisma.answerOptionQuestion.findMany({
-            where: {
-                questionId: qC1.id,
-                answerText: { in: ['Kurang Sesuai', 'Tidak Sesuai'] }
+        // Question C3: Nama Perusahaan/Instansi (Conditional - appears when "Bekerja" is selected)
+        const codeC3 = await createCodeQuestion('C3', tracerStudySurvey.id)
+        const qC3 = await prisma.question.create({
+            data: {
+                codeId: codeC3.code,
+                groupQuestionId: groupQuestions[2].id,
+                questionText: 'Nama Perusahaan/Instansi',
+                questionType: 'ESSAY',
+                isRequired: true, // Changed to required for manager generation
+                sortOrder: sortOrder++,
+                placeholder: 'Masukkan nama perusahaan atau instansi',
+                searchplaceholder: '',
+                pageNumber: pageNumber3
             }
         })
-        for (const option of notSuitableOptions) {
-            await prisma.questionTree.create({
-                data: {
-                    questionTriggerId: qC1.id,
-                    answerQuestionTriggerId: option.id,
-                    questionPointerToId: qC2.id
-                }
+        questions.push(qC3)
+
+        // Question C4: Jabatan/Posisi
+        const codeC4 = await createCodeQuestion('C4', tracerStudySurvey.id)
+        const qC4 = await prisma.question.create({
+            data: {
+                codeId: codeC4.code,
+                groupQuestionId: groupQuestions[2].id,
+                questionText: 'Jabatan/Posisi',
+                questionType: 'ESSAY',
+                isRequired: true, // Changed to required for manager generation
+                sortOrder: sortOrder++,
+                placeholder: 'Masukkan jabatan atau posisi Anda',
+                searchplaceholder: '',
+                pageNumber: pageNumber3
+            }
+        })
+        questions.push(qC4)
+
+        // Question C5: Nama Atasan/Manager (Conditional - appears when "Bekerja" is selected)
+        const codeC5 = await createCodeQuestion('C5', tracerStudySurvey.id)
+        const qC5 = await prisma.question.create({
+            data: {
+                codeId: codeC5.code,
+                groupQuestionId: groupQuestions[2].id,
+                questionText: 'Nama Atasan/Manager',
+                questionType: 'ESSAY',
+                isRequired: true,
+                sortOrder: sortOrder++,
+                placeholder: 'Masukkan nama lengkap atasan atau manager Anda',
+                searchplaceholder: '',
+                pageNumber: pageNumber3
+            }
+        })
+        questions.push(qC5)
+
+        // Question C6: Email Atasan/Manager (Conditional - appears when "Bekerja" is selected)
+        const codeC6 = await createCodeQuestion('C6', tracerStudySurvey.id)
+        const qC6 = await prisma.question.create({
+            data: {
+                codeId: codeC6.code,
+                groupQuestionId: groupQuestions[2].id,
+                questionText: 'Email Atasan/Manager',
+                questionType: 'ESSAY',
+                isRequired: true,
+                sortOrder: sortOrder++,
+                placeholder: 'contoh@email.com',
+                searchplaceholder: '',
+                pageNumber: pageNumber3
+            }
+        })
+        questions.push(qC6)
+
+        // Question C7: Nomor Telepon Atasan/Manager (Conditional - appears when "Bekerja" is selected)
+        const codeC7 = await createCodeQuestion('C7', tracerStudySurvey.id)
+        const qC7 = await prisma.question.create({
+            data: {
+                codeId: codeC7.code,
+                groupQuestionId: groupQuestions[2].id,
+                questionText: 'Nomor Telepon Atasan/Manager',
+                questionType: 'ESSAY',
+                isRequired: false,
+                sortOrder: sortOrder++,
+                placeholder: '08xxxxxxxxxx',
+                searchplaceholder: '',
+                pageNumber: pageNumber3
+            }
+        })
+        questions.push(qC7)
+
+        // Create QuestionTree for conditional questions
+        // These questions (C5, C6, C7) will appear when user selects "Bekerja (Full Time)", "Bekerja (Part Time)", or "Wiraswasta"
+        logger.info('🌳 Creating QuestionTree for conditional manager questions...')
+        
+        // Get answer options for C1 (Status Kerja)
+        const c1AnswerOptions = await prisma.answerOptionQuestion.findMany({
+            where: { questionId: qC1.id },
+            orderBy: { sortOrder: 'asc' }
+        })
+
+        // Find the answer options for "Bekerja" status
+        const bekerjaFullTimeOption = c1AnswerOptions.find(opt => opt.answerText === 'Bekerja (Full Time)')
+        const bekerjaPartTimeOption = c1AnswerOptions.find(opt => opt.answerText === 'Bekerja (Part Time)')
+        const wiraswastaOption = c1AnswerOptions.find(opt => opt.answerText === 'Wiraswasta')
+
+        // Create QuestionTree entries for each "Bekerja" option to show C3, C4, C5, C6, C7
+        // C3 (Perusahaan) and C4 (Posisi) are also conditional for manager data
+        const questionTreeEntries = []
+        
+        if (bekerjaFullTimeOption) {
+            // C3: Nama Perusahaan/Instansi
+            questionTreeEntries.push({
+                questionTriggerId: qC1.id,
+                answerQuestionTriggerId: bekerjaFullTimeOption.id,
+                questionPointerToId: qC3.id
+            })
+            // C4: Jabatan/Posisi
+            questionTreeEntries.push({
+                questionTriggerId: qC1.id,
+                answerQuestionTriggerId: bekerjaFullTimeOption.id,
+                questionPointerToId: qC4.id
+            })
+            // C5: Nama Atasan/Manager
+            questionTreeEntries.push({
+                questionTriggerId: qC1.id,
+                answerQuestionTriggerId: bekerjaFullTimeOption.id,
+                questionPointerToId: qC5.id
+            })
+            // C6: Email Atasan/Manager
+            questionTreeEntries.push({
+                questionTriggerId: qC1.id,
+                answerQuestionTriggerId: bekerjaFullTimeOption.id,
+                questionPointerToId: qC6.id
+            })
+            // C7: Nomor Telepon Atasan/Manager
+            questionTreeEntries.push({
+                questionTriggerId: qC1.id,
+                answerQuestionTriggerId: bekerjaFullTimeOption.id,
+                questionPointerToId: qC7.id
             })
         }
 
-        // ===== GROUP 4: Penilaian Kompetensi =====
+        if (bekerjaPartTimeOption) {
+            // C3: Nama Perusahaan/Instansi
+            questionTreeEntries.push({
+                questionTriggerId: qC1.id,
+                answerQuestionTriggerId: bekerjaPartTimeOption.id,
+                questionPointerToId: qC3.id
+            })
+            // C4: Jabatan/Posisi
+            questionTreeEntries.push({
+                questionTriggerId: qC1.id,
+                answerQuestionTriggerId: bekerjaPartTimeOption.id,
+                questionPointerToId: qC4.id
+            })
+            // C5: Nama Atasan/Manager
+            questionTreeEntries.push({
+                questionTriggerId: qC1.id,
+                answerQuestionTriggerId: bekerjaPartTimeOption.id,
+                questionPointerToId: qC5.id
+            })
+            // C6: Email Atasan/Manager
+            questionTreeEntries.push({
+                questionTriggerId: qC1.id,
+                answerQuestionTriggerId: bekerjaPartTimeOption.id,
+                questionPointerToId: qC6.id
+            })
+            // C7: Nomor Telepon Atasan/Manager
+            questionTreeEntries.push({
+                questionTriggerId: qC1.id,
+                answerQuestionTriggerId: bekerjaPartTimeOption.id,
+                questionPointerToId: qC7.id
+            })
+        }
+
+        if (wiraswastaOption) {
+            // C3: Nama Perusahaan/Instansi
+            questionTreeEntries.push({
+                questionTriggerId: qC1.id,
+                answerQuestionTriggerId: wiraswastaOption.id,
+                questionPointerToId: qC3.id
+            })
+            // C4: Jabatan/Posisi
+            questionTreeEntries.push({
+                questionTriggerId: qC1.id,
+                answerQuestionTriggerId: wiraswastaOption.id,
+                questionPointerToId: qC4.id
+            })
+            // C5: Nama Atasan/Manager
+            questionTreeEntries.push({
+                questionTriggerId: qC1.id,
+                answerQuestionTriggerId: wiraswastaOption.id,
+                questionPointerToId: qC5.id
+            })
+            // C6: Email Atasan/Manager
+            questionTreeEntries.push({
+                questionTriggerId: qC1.id,
+                answerQuestionTriggerId: wiraswastaOption.id,
+                questionPointerToId: qC6.id
+            })
+            // C7: Nomor Telepon Atasan/Manager
+            questionTreeEntries.push({
+                questionTriggerId: qC1.id,
+                answerQuestionTriggerId: wiraswastaOption.id,
+                questionPointerToId: qC7.id
+            })
+        }
+
+        // Delete existing QuestionTree entries for C1 (Status Kerja) to avoid duplicates
+        if (questionTreeEntries.length > 0) {
+            await prisma.questionTree.deleteMany({
+                where: {
+                    questionTriggerId: qC1.id
+                }
+            })
+        }
+        
+        // Create QuestionTree entries
+        for (const entry of questionTreeEntries) {
+            await prisma.questionTree.create({
+                data: entry
+            })
+        }
+        logger.info(`✅ Created ${questionTreeEntries.length} QuestionTree entries for conditional manager questions`)
+
+        // ===== PAGE 4: Penilaian Kompetensi =====
+        const pageNumber4 = 4
         // Question D1: Penilaian Kompetensi (Matrix)
+        const codeD1 = await createCodeQuestion('D1', tracerStudySurvey.id)
         const qD1 = await prisma.question.create({
             data: {
-                codeId: codeD.code,
+                codeId: codeD1.code,
                 groupQuestionId: groupQuestions[3].id,
-                questionText: 'Seberapa besar tingkat kompetensi yang Anda kuasai sekarang?',
+                questionText: 'Penilaian Kompetensi yang Didapat dari Perguruan Tinggi',
                 questionType: 'MATRIX_SINGLE_CHOICE',
                 isRequired: true,
                 sortOrder: sortOrder++,
                 placeholder: 'Pilih tingkat kompetensi untuk setiap item',
-                searchplaceholder: ''
+                searchplaceholder: '',
+                pageNumber: pageNumber4
             }
         })
         questions.push(qD1)
@@ -437,134 +656,48 @@ async function seedSurvey(logger) {
         ])
 
         // Question D2: Sub-items untuk matrix (parent-child relationship)
-        const matrixItems = [
-            'Pengetahuan di bidang ilmu',
-            'Keahlian di bidang tertentu',
-            'Komunikasi verbal',
-            'Komunikasi tertulis',
-            'Bekerja dalam tim',
+        // Matrix items for kompetensi
+        const kompetensiItems = [
+            'Keterampilan Komunikasi',
+            'Keterampilan Analisis',
+            'Berpikir Kritis',
+            'Berpikir Kreatif',
+            'Keterampilan Kolaborasi',
             'Kepemimpinan',
-            'Pengambilan keputusan',
-            'Pemecahan masalah',
-            'Bahasa Inggris',
-            'Penggunaan teknologi informasi'
+            'Penguasaan Teknologi',
+            'Keterampilan Bahasa Asing'
         ]
 
-        for (let i = 0; i < matrixItems.length; i++) {
-            await prisma.question.create({
+        const kompetensiOptions = await createAnswerOptions(qD1.id, [
+            { text: 'Sangat Buruk', order: 1 },
+            { text: 'Buruk', order: 2 },
+            { text: 'Cukup', order: 3 },
+            { text: 'Baik', order: 4 },
+            { text: 'Sangat Baik', order: 5 }
+        ])
+
+        for (let i = 0; i < kompetensiItems.length; i++) {
+            const codeDItem = await createCodeQuestion(`D${i + 2}`, tracerStudySurvey.id)
+            const itemQ = await prisma.question.create({
                 data: {
-                    codeId: codeD.code,
+                    codeId: codeDItem.code,
                     groupQuestionId: groupQuestions[3].id,
                     parentId: qD1.id,
-                    questionText: matrixItems[i],
+                    questionText: kompetensiItems[i],
                     questionType: 'SINGLE_CHOICE',
                     isRequired: true,
                     sortOrder: sortOrder++,
                     placeholder: 'Pilih tingkat kompetensi',
-                    searchplaceholder: ''
-                }
-            })
-        }
-
-        // ===== GROUP 5: Evaluasi Program Studi =====
-        // Question E1: Relevansi Kurikulum
-        const qE1 = await prisma.question.create({
-            data: {
-                codeId: codeE.code,
-                groupQuestionId: groupQuestions[4].id,
-                questionText: 'Seberapa relevan kurikulum yang Anda pelajari dengan kebutuhan dunia kerja?',
-                questionType: 'SINGLE_CHOICE',
-                isRequired: true,
-                sortOrder: sortOrder++,
-                placeholder: 'Pilih tingkat relevansi',
-                searchplaceholder: ''
-            }
-        })
-        questions.push(qE1)
-
-        await createAnswerOptions(qE1.id, [
-            { text: 'Sangat Relevan', order: 1 },
-            { text: 'Relevan', order: 2 },
-            { text: 'Kurang Relevan', order: 3 },
-            { text: 'Tidak Relevan', order: 4 }
-        ])
-
-        // Question E2: Mata Kuliah Paling Bermanfaat
-        const qE2 = await prisma.question.create({
-            data: {
-                codeId: codeE.code,
-                groupQuestionId: groupQuestions[4].id,
-                questionText: 'Mata kuliah apa yang paling bermanfaat untuk pekerjaan Anda saat ini?',
-                questionType: 'MULTIPLE_CHOICE',
-                isRequired: false,
-                sortOrder: sortOrder++,
-                placeholder: 'Pilih semua yang sesuai',
-                searchplaceholder: 'Cari mata kuliah'
-            }
-        })
-        questions.push(qE2)
-
-        await createAnswerOptions(qE2.id, [
-            { text: 'Mata kuliah teori dasar', order: 1 },
-            { text: 'Mata kuliah praktikum/lab', order: 2 },
-            { text: 'Mata kuliah yang relevan dengan pekerjaan', order: 3 },
-            { text: 'Mata kuliah soft skills', order: 4 },
-            { text: 'Mata kuliah magang/KP', order: 5 },
-            { text: 'Lainnya', order: 6, isTriggered: true, placeholder: 'Sebutkan' }
-        ])
-
-        // Question E3: Kualitas Pengajaran
-        const qE3 = await prisma.question.create({
-            data: {
-                codeId: codeE.code,
-                groupQuestionId: groupQuestions[4].id,
-                questionText: 'Bagaimana penilaian Anda terhadap kualitas pengajaran di program studi Anda?',
-                questionType: 'MATRIX_SINGLE_CHOICE',
-                isRequired: true,
-                sortOrder: sortOrder++,
-                placeholder: 'Beri penilaian untuk setiap aspek',
-                searchplaceholder: ''
-            }
-        })
-        questions.push(qE3)
-
-        const qualityOptions = await createAnswerOptions(qE3.id, [
-            { text: 'Sangat Baik', order: 1 },
-            { text: 'Baik', order: 2 },
-            { text: 'Cukup', order: 3 },
-            { text: 'Kurang', order: 4 }
-        ])
-
-        const qualityAspects = [
-            'Kualitas dosen pengajar',
-            'Metode pengajaran',
-            'Fasilitas laboratorium/praktikum',
-            'Perpustakaan',
-            'Akses ke internet',
-            'Sarana olahraga',
-            'Sarana kesehatan'
-        ]
-
-        for (const aspect of qualityAspects) {
-            const aspectQ = await prisma.question.create({
-                data: {
-                    codeId: codeE.code,
-                    groupQuestionId: groupQuestions[4].id,
-                    parentId: qE3.id,
-                    questionText: aspect,
-                    questionType: 'SINGLE_CHOICE',
-                    isRequired: true,
-                    sortOrder: sortOrder++,
-                    placeholder: 'Pilih penilaian',
-                    searchplaceholder: ''
+                    searchplaceholder: '',
+                    pageNumber: pageNumber4 // Child questions use same page as parent
                 }
             })
 
             // Link same options to parent
-            for (const opt of qualityOptions) {
+            for (const opt of kompetensiOptions) {
                 await prisma.answerOptionQuestion.create({
                     data: {
-                        questionId: aspectQ.id,
+                        questionId: itemQ.id,
                         answerText: opt.answerText,
                         sortOrder: opt.sortOrder,
                         isTriggered: opt.isTriggered || false,
@@ -574,55 +707,126 @@ async function seedSurvey(logger) {
             }
         }
 
-        // ===== GROUP 6: Rekomendasi dan Saran =====
-        // Question F1: Rekomendasi untuk Alumni Lain
-        const qF1 = await prisma.question.create({
+        // ===== PAGE 5: Kepuasan Pendidikan =====
+        const pageNumber5 = 5
+        // Question E1: Kepuasan Pendidikan (Matrix)
+        const codeE1 = await createCodeQuestion('E1', tracerStudySurvey.id)
+        const qE1 = await prisma.question.create({
             data: {
-                codeId: codeE.code,
-                groupQuestionId: groupQuestions[5].id,
-                questionText: 'Apakah Anda akan merekomendasikan program studi Anda kepada calon mahasiswa baru?',
-                questionType: 'SINGLE_CHOICE',
+                codeId: codeE1.code,
+                groupQuestionId: groupQuestions[4].id,
+                questionText: 'Tingkat Kepuasan terhadap Pendidikan di Perguruan Tinggi',
+                questionType: 'MATRIX_SINGLE_CHOICE',
                 isRequired: true,
                 sortOrder: sortOrder++,
-                placeholder: 'Pilih salah satu',
-                searchplaceholder: ''
+                placeholder: 'Beri penilaian untuk setiap aspek',
+                searchplaceholder: '',
+                pageNumber: pageNumber5
+            }
+        })
+        questions.push(qE1)
+
+        const kepuasanOptions = await createAnswerOptions(qE1.id, [
+            { text: 'Sangat Tidak Puas', order: 1 },
+            { text: 'Tidak Puas', order: 2 },
+            { text: 'Netral', order: 3 },
+            { text: 'Puas', order: 4 },
+            { text: 'Sangat Puas', order: 5 }
+        ])
+
+        const kepuasanItems = [
+            'Kurikulum',
+            'Kualitas Dosen',
+            'Fasilitas Pembelajaran',
+            'Kegiatan Praktikum',
+            'Kegiatan Penelitian',
+            'Kegiatan Pengabdian Masyarakat',
+            'Pelayanan Administrasi',
+            'Fasilitas Perpustakaan'
+        ]
+
+        for (let i = 0; i < kepuasanItems.length; i++) {
+            const codeEItem = await createCodeQuestion(`E${i + 2}`, tracerStudySurvey.id)
+            const itemQ = await prisma.question.create({
+                data: {
+                    codeId: codeEItem.code,
+                    groupQuestionId: groupQuestions[4].id,
+                    parentId: qE1.id,
+                    questionText: kepuasanItems[i],
+                    questionType: 'SINGLE_CHOICE',
+                    isRequired: true,
+                    sortOrder: sortOrder++,
+                    placeholder: 'Pilih penilaian',
+                    searchplaceholder: '',
+                    pageNumber: pageNumber5 // Child questions use same page as parent
+                }
+            })
+
+            // Link same options to parent
+            for (const opt of kepuasanOptions) {
+                await prisma.answerOptionQuestion.create({
+                    data: {
+                        questionId: itemQ.id,
+                        answerText: opt.answerText,
+                        sortOrder: opt.sortOrder,
+                        isTriggered: opt.isTriggered || false,
+                        otherOptionPlaceholder: opt.otherOptionPlaceholder
+                    }
+                })
+            }
+        }
+
+        // ===== PAGE 6: Saran dan Harapan =====
+        const pageNumber6 = 6
+        // Question F1: Saran Perbaikan
+        const codeF1 = await createCodeQuestion('F1', tracerStudySurvey.id)
+        const qF1 = await prisma.question.create({
+            data: {
+                codeId: codeF1.code,
+                groupQuestionId: groupQuestions[5].id,
+                questionText: 'Saran untuk Perbaikan Program Studi',
+                questionType: 'LONG_TEST',
+                isRequired: false,
+                sortOrder: sortOrder++,
+                placeholder: 'Berikan saran untuk perbaikan program studi Anda...',
+                searchplaceholder: '',
+                pageNumber: pageNumber6
             }
         })
         questions.push(qF1)
 
-        await createAnswerOptions(qF1.id, [
-            { text: 'Sangat Merekomendasikan', order: 1 },
-            { text: 'Merekomendasikan', order: 2 },
-            { text: 'Kurang Merekomendasikan', order: 3 },
-            { text: 'Tidak Merekomendasikan', order: 4 }
-        ])
-
-        // Question F2: Saran untuk Peningkatan
+        // Question F2: Harapan Masa Depan
+        const codeF2 = await createCodeQuestion('F2', tracerStudySurvey.id)
         const qF2 = await prisma.question.create({
             data: {
-                codeId: codeE.code,
+                codeId: codeF2.code,
                 groupQuestionId: groupQuestions[5].id,
-                questionText: 'Apa saran Anda untuk meningkatkan kualitas program studi?',
-                questionType: 'ESSAY',
+                questionText: 'Harapan untuk Masa Depan Program Studi',
+                questionType: 'LONG_TEST',
                 isRequired: false,
                 sortOrder: sortOrder++,
-                placeholder: 'Tuliskan saran Anda di sini...',
-                searchplaceholder: ''
+                placeholder: 'Berikan harapan untuk masa depan program studi...',
+                searchplaceholder: '',
+                pageNumber: pageNumber6
             }
         })
         questions.push(qF2)
 
         logger.info(`✅ Created ${questions.length} Questions`)
 
+        // Use fixed UUID for Manager Survey
+        const managerSurveyId = '550e8400-e29b-41d4-a716-446655440002'
+        logger.info(`📝 Using UUID for Manager Survey: ${managerSurveyId}`)
+
         // Create Survey 2: User Survey for MANAGER
         logger.info('📝 Creating User Survey for MANAGER...')
         const managerSurvey = await prisma.survey.upsert({
             where: {
-                id: 'user-survey-manager-2024'
+                id: managerSurveyId
             },
             update: {},
             create: {
-                id: 'user-survey-manager-2024',
+                id: managerSurveyId,
                 greetingOpening: {
                     title: 'Selamat Datang di User Survey',
                     message: 'Terima kasih telah meluangkan waktu untuk mengisi survey tentang kualitas lulusan universitas kami.',
@@ -641,20 +845,77 @@ async function seedSurvey(logger) {
 
         logger.info(`✅ Created Survey: ${managerSurvey.id}`)
 
-        // Create Code Questions for Manager Survey
-        const managerCodes = [
-            { code: 'M1', surveyId: managerSurvey.id }, // Informasi Perusahaan
-            { code: 'M2', surveyId: managerSurvey.id }, // Penilaian Alumni
-            { code: 'M3', surveyId: managerSurvey.id }  // Rekomendasi
-        ]
-
-        for (const codeQ of managerCodes) {
-            await prisma.codeQuestion.upsert({
-                where: { code: codeQ.code },
-                update: {},
-                create: codeQ
+        // Delete existing code questions and questions for manager survey first
+        logger.info('🗑️  Cleaning up existing Manager Survey Code Questions and Questions...')
+        
+        // Get all code questions for manager survey
+        const existingManagerCodeQuestions = await prisma.codeQuestion.findMany({
+            where: { surveyId: managerSurvey.id },
+            select: { code: true }
+        })
+        
+        const managerCodeIds = existingManagerCodeQuestions.map(cq => cq.code)
+        
+        // Get all questions that use these codeIds (including any duplicates)
+        const allManagerQuestions = managerCodeIds.length > 0
+            ? await prisma.question.findMany({
+                where: { codeId: { in: managerCodeIds } },
+                select: { id: true }
+            })
+            : []
+        
+        const allManagerQuestionIds = allManagerQuestions.map(q => q.id)
+        
+        if (allManagerQuestionIds.length > 0) {
+            // Delete in correct order to avoid foreign key constraint violations
+            // 1. Delete QuestionTree (references Question via questionTriggerId and questionPointerToId)
+            await prisma.questionTree.deleteMany({
+                where: {
+                    OR: [
+                        { questionTriggerId: { in: allManagerQuestionIds } },
+                        { questionPointerToId: { in: allManagerQuestionIds } }
+                    ]
+                }
+            })
+            
+            // 2. Delete AnswerMultipleChoice (references Question)
+            await prisma.answerMultipleChoice.deleteMany({
+                where: { questionId: { in: allManagerQuestionIds } }
+            })
+            
+            // 3. Delete Answer (references Question)
+            await prisma.answer.deleteMany({
+                where: { questionId: { in: allManagerQuestionIds } }
+            })
+            
+            // 4. Delete AnswerOptionQuestion (references Question)
+            await prisma.answerOptionQuestion.deleteMany({
+                where: { questionId: { in: allManagerQuestionIds } }
+            })
+            
+            // 5. Delete Questions (children first, then parents)
+            // Delete children questions first (those with parentId)
+            await prisma.question.deleteMany({
+                where: {
+                    id: { in: allManagerQuestionIds },
+                    parentId: { not: null }
+                }
+            })
+            
+            // Then delete parent questions
+            await prisma.question.deleteMany({
+                where: {
+                    id: { in: allManagerQuestionIds },
+                    parentId: null
+                }
             })
         }
+        
+        // Delete code questions (this will also ensure no orphaned code questions)
+        await prisma.codeQuestion.deleteMany({
+            where: { surveyId: managerSurvey.id }
+        })
+        logger.info('✅ Cleaned up existing Manager Survey data')
 
         // Create Group Questions for Manager
         const managerGroups = [
@@ -671,13 +932,11 @@ async function seedSurvey(logger) {
             managerGroupQuestions.push(group)
         }
 
-        // Get manager code questions
-        const codeM1 = await prisma.codeQuestion.findUnique({ where: { code: 'M1' } })
-        const codeM2 = await prisma.codeQuestion.findUnique({ where: { code: 'M2' } })
-        const codeM3 = await prisma.codeQuestion.findUnique({ where: { code: 'M3' } })
-
         sortOrder = 1
         // Manager Questions
+        // PAGE 1: Informasi Perusahaan dan Alumni
+        const managerPageNumber1 = 1
+        const codeM1 = await createCodeQuestion('M1', managerSurvey.id)
         const mQ1 = await prisma.question.create({
             data: {
                 codeId: codeM1.code,
@@ -687,7 +946,8 @@ async function seedSurvey(logger) {
                 isRequired: true,
                 sortOrder: sortOrder++,
                 placeholder: 'Pilih jumlah',
-                searchplaceholder: ''
+                searchplaceholder: '',
+                pageNumber: managerPageNumber1
             }
         })
 
@@ -698,6 +958,9 @@ async function seedSurvey(logger) {
             { text: 'Lebih dari 20 orang', order: 4 }
         ])
 
+        // PAGE 2: Penilaian Kualitas Alumni
+        const managerPageNumber2 = 2
+        const codeM2 = await createCodeQuestion('M2', managerSurvey.id)
         const mQ2 = await prisma.question.create({
             data: {
                 codeId: codeM2.code,
@@ -707,7 +970,8 @@ async function seedSurvey(logger) {
                 isRequired: true,
                 sortOrder: sortOrder++,
                 placeholder: 'Beri penilaian untuk setiap aspek',
-                searchplaceholder: ''
+                searchplaceholder: '',
+                pageNumber: managerPageNumber2
             }
         })
 
@@ -727,18 +991,20 @@ async function seedSurvey(logger) {
             'Kepemimpinan'
         ]
 
-        for (const aspect of managerAspects) {
+        for (let i = 0; i < managerAspects.length; i++) {
+            const codeMAspect = await createCodeQuestion(`M2_${i + 1}`, managerSurvey.id)
             const aspectQ = await prisma.question.create({
                 data: {
-                    codeId: codeM2.code,
+                    codeId: codeMAspect.code,
                     groupQuestionId: managerGroupQuestions[1].id,
                     parentId: mQ2.id,
-                    questionText: aspect,
+                    questionText: managerAspects[i],
                     questionType: 'SINGLE_CHOICE',
                     isRequired: true,
                     sortOrder: sortOrder++,
                     placeholder: 'Pilih penilaian',
-                    searchplaceholder: ''
+                    searchplaceholder: '',
+                    pageNumber: managerPageNumber2 // Child questions use same page as parent
                 }
             })
 
@@ -753,6 +1019,9 @@ async function seedSurvey(logger) {
             }
         }
 
+        // PAGE 3: Rekomendasi dan Harapan
+        const managerPageNumber3 = 3
+        const codeM3 = await createCodeQuestion('M3', managerSurvey.id)
         const mQ3 = await prisma.question.create({
             data: {
                 codeId: codeM3.code,
@@ -762,7 +1031,8 @@ async function seedSurvey(logger) {
                 isRequired: true,
                 sortOrder: sortOrder++,
                 placeholder: 'Pilih salah satu',
-                searchplaceholder: ''
+                searchplaceholder: '',
+                pageNumber: managerPageNumber3
             }
         })
 
@@ -773,16 +1043,18 @@ async function seedSurvey(logger) {
             { text: 'Tidak', order: 4 }
         ])
 
+        const codeM4 = await createCodeQuestion('M4', managerSurvey.id)
         const mQ4 = await prisma.question.create({
             data: {
-                codeId: codeM3.code,
+                codeId: codeM4.code,
                 groupQuestionId: managerGroupQuestions[2].id,
                 questionText: 'Apa saran Anda untuk meningkatkan kualitas lulusan universitas kami?',
                 questionType: 'ESSAY',
                 isRequired: false,
                 sortOrder: sortOrder++,
                 placeholder: 'Tuliskan saran Anda...',
-                searchplaceholder: ''
+                searchplaceholder: '',
+                pageNumber: managerPageNumber3
             }
         })
 

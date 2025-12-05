@@ -16,6 +16,23 @@ class SurveyRoute extends BaseRoute {
     }
 
     createRoute() {
+        // Public endpoints for published surveys (no authentication required)
+        this.get(
+            "/v1/public/surveys",
+            "getPublishedSurveys"
+        )
+
+        this.get(
+            "/v1/public/surveys/:id",
+            "getPublishedSurveyById"
+        )
+
+        this.get(
+            "/v1/public/surveys/:surveyId/questions",
+            "getPublishedSurveyQuestions"
+        )
+
+        // Admin endpoints (require authentication)
         this.get(
             "/v1/surveys",
             "getSurveys",
